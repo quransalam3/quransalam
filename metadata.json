@@ -1,0 +1,7 @@
+{
+  "name": "SALAM Quran",
+  "description": "Sistem Informasi & Input Laporan Hasil Hafalan Siswa SD Islam Terpadu Salsabila 3 Banguntapan",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

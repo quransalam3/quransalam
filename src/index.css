@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+@theme {
+  --color-salam-teal: #00C2A0;
+  --color-salam-teal-dark: #009e82;
+  --color-salam-teal-light: #e6faf6;
+  --color-salam-slate: #3F4E5A;
+  --color-salam-slate-dark: #2B3740;
+  --color-salam-slate-light: #526372;
+  --color-salam-bg: #FDFDFD;
+  --font-amiri: 'Amiri', serif;
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .page-break {
+    page-break-after: always;
+  }
+}
+

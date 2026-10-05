@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="salamGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00C2A0"/>
+      <stop offset="100%" stop-color="#008E75"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFD166"/>
+      <stop offset="100%" stop-color="#F4A261"/>
+    </linearGradient>
+  </defs>
+  <!-- Background with Safe Margin -->
+  <rect width="512" height="512" rx="110" fill="#3F4E5A"/>
+  
+  <!-- Subtle Islamic Arch / Dome Frame -->
+  <path d="M120 400 L120 220 Q256 100 392 220 L392 400 Z" fill="#2E3A44" opacity="0.4"/>
+  
+  <!-- Open Quran Book Stylized -->
+  <g transform="translate(256, 260)">
+    <!-- Base Ribbon / Stand -->
+    <path d="M-80 90 L0 50 L80 90 L50 110 L0 80 L-50 110 Z" fill="url(#goldGrad)"/>
+    
+    <!-- Left Book Page -->
+    <path d="M-10 40 C-60 45 -130 10 -150 -50 C-150 -50 -70 -25 -10 20 Z" fill="url(#salamGrad)"/>
+    <path d="M-10 20 C-60 25 -125 -5 -145 -65 C-145 -65 -65 -40 -10 0 Z" fill="#FFFFFF"/>
+    <path d="M-10 0 C-55 5 -120 -20 -140 -80 C-140 -80 -60 -55 -10 -20 Z" fill="#F0FDF4"/>
+    
+    <!-- Right Book Page -->
+    <path d="M10 40 C60 45 130 10 150 -50 C150 -50 70 -25 10 20 Z" fill="url(#salamGrad)"/>
+    <path d="M10 20 C60 25 125 -5 145 -65 C145 -65 65 -40 10 0 Z" fill="#FFFFFF"/>
+    <path d="M10 0 C55 5 120 -20 140 -80 C140 -80 60 -55 10 -20 Z" fill="#F0FDF4"/>
+    
+    <!-- Spine Center -->
+    <ellipse cx="0" cy="15" rx="8" ry="30" fill="url(#goldGrad)"/>
+    
+    <!-- Star of Guidance / Noor above Quran -->
+    <g transform="translate(0, -115)">
+      <polygon points="0,-24 7,-8 24,-8 11,3 16,19 0,9 -16,19 -11,3 -24,-8 -7,-8" fill="url(#goldGrad)"/>
+      <circle cx="0" cy="0" r="4" fill="#FFFFFF"/>
+    </g>
+  </g>
+  
+  <!-- Text SALAM -->
+  <text x="256" y="445" font-family="'Plus Jakarta Sans', Arial, sans-serif" font-size="34" font-weight="800" fill="#00C2A0" text-anchor="middle" letter-spacing="4">SALAM QURAN</text>
+  <text x="256" y="475" font-family="'Plus Jakarta Sans', Arial, sans-serif" font-size="16" font-weight="600" fill="#E2E8F0" text-anchor="middle" letter-spacing="1">SD IT SALSABILA 3</text>
+</svg>
