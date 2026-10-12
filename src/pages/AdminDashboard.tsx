@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Student, Teacher, ActivityLog, MemorizationRecord } from '../types';
-import { storage, DEFAULT_PASSWORD, makeWaliUsername } from '../lib/storage';
+import { storage, DEFAULT_PASSWORD, makeWaliUsername, useStorageSubscription } from '../lib/storage';
 import { getCloudConfig, saveCloudConfig, isCloudConnected } from '../lib/supabaseClient';
 import { AVAILABLE_YEARS, MONTH_NAMES } from '../lib/exportUtils';
 import { generateSupabaseSqlScript } from '../lib/sqlExport';
@@ -34,6 +34,7 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) => {
+  useStorageSubscription();
   const [activeTab, setActiveTab] = useState<'monitoring' | 'siswa' | 'guru' | 'kelas' | 'reset-pass' | 'logs' | 'database'>('monitoring');
 
   // Monitoring filter states (Semua Riwayat, Dropdown Bulan, Dropdown Tahun 2025 onwards)
@@ -73,6 +74,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) =
 
   // Reset pass states
   const [authAccounts, setAuthAccounts] = useState(() => storage.getAllAuthAccounts());
+  useEffect(() => {
+    return storage.subscribe(() => {
+      setAuthAccounts(storage.getAllAuthAccounts());
+    });
+  }, []);
   const [resetSearch, setResetSearch] = useState('');
   const [resetRoleFilter, setResetRoleFilter] = useState<'ALL' | 'guru' | 'wali' | 'admin'>('ALL');
   const [resetSuccessMessage, setResetSuccessMessage] = useState('');
@@ -166,10 +172,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) =
   };
 
   // --- Cloud Database Save handler ---
-  const handleSaveCloudConfig = (e: React.FormEvent) => {
+  const [isManualSyncing, setIsManualSyncing] = useState(false);
+  const handleManualSync = async () => {
+    setIsManualSyncing(true);
+    const ok = await storage.syncFromCloud();
+    setIsManualSyncing(false);
+    if (ok) {
+      setCloudStatusMsg('Data berhasil disinkronkan secara online dengan Supabase!');
+    } else {
+      setCloudStatusMsg('Gagal menyinkronkan data dari cloud. Periksa koneksi internet Anda.');
+    }
+    setTimeout(() => setCloudStatusMsg(''), 4000);
+  };
+
+  const handleSaveCloudConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     saveCloudConfig(cloudUrl, cloudKey);
-    setCloudStatusMsg('Konfigurasi Basis Data Cloud berhasil disimpan.');
+    setCloudStatusMsg('Konfigurasi Basis Data Cloud berhasil disimpan. Menyinkronkan...');
+    await storage.syncFromCloud();
+    setCloudStatusMsg('Konfigurasi Basis Data Cloud berhasil disimpan dan tersinkronkan.');
     setTimeout(() => setCloudStatusMsg(''), 3000);
   };
 
@@ -877,7 +898,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) =
             </div>
           </div>
 
-          <div className={`p-4 rounded-2xl border text-xs flex items-center justify-between ${
+          <div className={`p-4 rounded-2xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
             isCloudConnected() ? 'bg-teal-50 border-teal-200 text-teal-800' : 'bg-gray-50 border-gray-200 text-gray-600'
           }`}>
             <div className="flex items-center gap-2">
@@ -886,11 +907,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) =
                 Status Koneksi Cloud: {isCloudConnected() ? 'Terhubung & Aktif' : 'Lokal / Menunggu Konfigurasi Cloud'}
               </span>
             </div>
-            {isCloudConnected() && (
-              <span className="text-[11px] font-semibold bg-white px-2 py-0.5 rounded-md border border-teal-200">
-                Mode Sinkronisasi Otomatis
-              </span>
-            )}
+            <div className="flex items-center gap-2 flex-wrap">
+              {isCloudConnected() && (
+                <span className="text-[11px] font-semibold bg-white px-2.5 py-1 rounded-lg border border-teal-200">
+                  Mode Sinkronisasi Otomatis
+                </span>
+              )}
+              {isCloudConnected() && (
+                <button
+                  type="button"
+                  onClick={handleManualSync}
+                  disabled={isManualSyncing}
+                  className="flex items-center gap-1.5 px-3 py-1 bg-[#00C2A0] hover:bg-[#009e82] text-white rounded-lg text-[11px] font-bold shadow-xs cursor-pointer transition disabled:opacity-50"
+                  title="Tarik data terbaru dari Supabase sekarang"
+                >
+                  <RotateCcw className={`w-3.5 h-3.5 ${isManualSyncing ? 'animate-spin' : ''}`} />
+                  <span>{isManualSyncing ? 'Menyinkronkan...' : 'Sinkronkan Sekarang'}</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {cloudStatusMsg && (

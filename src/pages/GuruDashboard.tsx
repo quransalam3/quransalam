@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, MemorizationType, ScoreGrade, MemorizationRecord } from '../types';
-import { storage } from '../lib/storage';
+import { storage, useStorageSubscription } from '../lib/storage';
 import { YANFAUNA_BOOKS, QURAN_SURAHS } from '../data/initialData';
 import { LetterheadKop } from '../components/LetterheadKop';
 import { exportRekapToExcel, MONTH_NAMES, getMonthLabel, AVAILABLE_YEARS } from '../lib/exportUtils';
@@ -39,6 +39,7 @@ interface GuruDashboardProps {
 }
 
 export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => {
+  useStorageSubscription();
   const todayStr = new Date().toISOString().split('T')[0];
 
   // Form states

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { storage, makeWaliUsername, DEFAULT_PASSWORD } from '../lib/storage';
+import { storage, makeWaliUsername, DEFAULT_PASSWORD, useStorageSubscription } from '../lib/storage';
+import { isCloudConnected } from '../lib/supabaseClient';
 import { User, Student } from '../types';
-import { Lock, User as UserIcon, Eye, EyeOff, Shield, BookOpen, HeartHandshake, Info, ChevronRight } from 'lucide-react';
+import { Lock, User as UserIcon, Eye, EyeOff, Shield, BookOpen, HeartHandshake, Info, ChevronRight, Cloud } from 'lucide-react';
 import { PWAInstallButton } from '../components/PWAInstallButton';
 
 interface LoginPageProps {
@@ -9,6 +10,7 @@ interface LoginPageProps {
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
+  useStorageSubscription();
   const [activeTab, setActiveTab] = useState<'guru' | 'wali' | 'admin'>('guru');
   
   // Generic form state
@@ -63,20 +65,23 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     setUsername(makeWaliUsername(selectedClass, studentName));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    setTimeout(() => {
-      const res = storage.login(username, password);
+    try {
+      const res = await storage.loginAsync(username, password);
       setLoading(false);
       if (res.user) {
         onLoginSuccess(res.user);
       } else {
         setError(res.error || 'Username atau password tidak sesuai.');
       }
-    }, 200);
+    } catch {
+      setLoading(false);
+      setError('Gagal memverifikasi login. Silakan coba lagi.');
+    }
   };
 
   return (
@@ -103,6 +108,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         <p className="text-center text-xs text-gray-400 mt-0.5">
           Salsabila Achievement, Learning, And Application for Monitoring Qur’an
         </p>
+
+        {/* Cloud Connection Live Badge */}
+        {isCloudConnected() && (
+          <div className="flex justify-center mt-2.5">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Basis Data Cloud Supabase Terhubung</span>
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="mt-6 sm:mx-auto sm:w-full sm:max-w-lg">

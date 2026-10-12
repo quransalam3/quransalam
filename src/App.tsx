@@ -14,6 +14,10 @@ export default function App() {
   const [showFirstLoginModal, setShowFirstLoginModal] = useState<boolean>(false);
 
   useEffect(() => {
+    storage.syncFromCloud().catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (currentUser?.firstLogin) {
       setShowFirstLoginModal(true);
     }

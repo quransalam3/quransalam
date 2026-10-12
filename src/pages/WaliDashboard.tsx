@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, MemorizationRecord } from '../types';
-import { storage } from '../lib/storage';
+import { storage, useStorageSubscription } from '../lib/storage';
 import { LetterheadKop } from '../components/LetterheadKop';
 import { exportSingleStudentToExcel, AVAILABLE_YEARS, MONTH_NAMES } from '../lib/exportUtils';
 import { 
@@ -23,6 +23,7 @@ interface WaliDashboardProps {
 }
 
 export const WaliDashboard: React.FC<WaliDashboardProps> = ({ currentUser }) => {
+  useStorageSubscription();
   const studentName = currentUser.studentName || 'Putra/Putri Anda';
   const classId = currentUser.classId || '1A';
 

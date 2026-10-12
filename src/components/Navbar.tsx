@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { User } from '../types';
+import { isCloudConnected } from '../lib/supabaseClient';
 import { PWAInstallButton } from './PWAInstallButton';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { LogOut, KeyRound, User as UserIcon, BookOpen, Shield, HeartHandshake } from 'lucide-react';
@@ -65,6 +66,14 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
             <div className="flex items-center gap-2 sm:gap-3">
               {/* PWA Install Button */}
               <PWAInstallButton />
+
+              {/* Cloud Connection Live Badge */}
+              {isCloudConnected() && (
+                <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-teal-50 text-[#008E75] border border-teal-200" title="Data tersinkronisasi otomatis dengan Cloud Database Supabase">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#00C2A0] animate-pulse"></span>
+                  <span>Cloud Online</span>
+                </div>
+              )}
 
               {/* User details */}
               <div className="hidden md:flex flex-col items-end">

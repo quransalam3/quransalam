@@ -5,14 +5,15 @@ import {
   ActivityLog, 
   User, 
   ActionType, 
-  UserRole 
+  UserRole,
+  AuthAccount
 } from '../types';
 import { 
   INITIAL_CLASSES, 
   INITIAL_TEACHERS, 
   INITIAL_STUDENTS 
 } from '../data/initialData';
-import { supabase } from './supabaseClient';
+import { supabase, isCloudConnected } from './supabaseClient';
 
 const STORAGE_KEYS = {
   CLASSES: 'salam_classes_v1',
@@ -22,19 +23,10 @@ const STORAGE_KEYS = {
   LOGS: 'salam_logs_v1',
   USERS_AUTH: 'salam_users_auth_v1',
   CURRENT_USER: 'salam_active_user_v1',
+  LAST_SYNC: 'salam_last_sync_v1',
 };
 
 export const DEFAULT_PASSWORD = 'salsabila3';
-
-interface AuthAccount {
-  username: string;
-  passwordHash: string; // plain or hashed
-  role: UserRole;
-  name: string;
-  classId?: string;
-  studentName?: string;
-  firstLogin: boolean;
-}
 
 // Helper to normalize strings for comparison
 export function normalizeStr(str: string): string {
@@ -46,6 +38,119 @@ export function makeWaliUsername(classId: string, studentName: string): string {
   return `wali.${classId}.${studentName.trim()}`;
 }
 
+// Mapping utilities for Supabase Snake_case <-> CamelCase
+export function dbToRecord(row: any): MemorizationRecord {
+  return {
+    id: String(row.id),
+    date: String(row.date),
+    classId: row.classId || row.class_id || '',
+    studentId: row.studentId || row.student_id || '',
+    studentName: row.studentName || row.student_name || '',
+    teacherId: row.teacherId || row.teacher_id || '',
+    teacherName: row.teacherName || row.teacher_name || '',
+    type: row.type === 'tahfidz' ? 'tahfidz' : 'tahsin',
+    tahsinBook: row.tahsinBook || row.tahsin_book || undefined,
+    tahsinPage: row.tahsinPage || row.tahsin_page || undefined,
+    tahsinSurahNumber: row.tahsinSurahNumber ?? row.tahsin_surah_number ?? undefined,
+    tahsinSurahName: row.tahsinSurahName || row.tahsin_surah_name || undefined,
+    tahsinLastAyat: row.tahsinLastAyat || row.tahsin_last_ayat || undefined,
+    tahfidzJuz: row.tahfidzJuz ?? row.tahfidz_juz ?? undefined,
+    tahfidzSurahNumber: row.tahfidzSurahNumber ?? row.tahfidz_surah_number ?? undefined,
+    tahfidzSurahName: row.tahfidzSurahName || row.tahfidz_surah_name || undefined,
+    tahfidzAyatRange: row.tahfidzAyatRange || row.tahfidz_ayat_range || undefined,
+    grade: row.grade || 'A (Mumtaz)',
+    notes: row.notes || '',
+    createdAt: row.createdAt || row.created_at || new Date().toISOString()
+  };
+}
+
+export function recordToDb(r: MemorizationRecord): Record<string, any> {
+  return {
+    id: r.id,
+    date: r.date,
+    class_id: r.classId,
+    student_id: r.studentId,
+    student_name: r.studentName,
+    teacher_id: r.teacherId,
+    teacher_name: r.teacherName,
+    type: r.type,
+    tahsin_book: r.tahsinBook || null,
+    tahsin_page: r.tahsinPage || null,
+    tahsin_surah_number: r.tahsinSurahNumber ?? null,
+    tahsin_surah_name: r.tahsinSurahName || null,
+    tahsin_last_ayat: r.tahsinLastAyat || null,
+    tahfidz_juz: r.tahfidzJuz ?? null,
+    tahfidz_surah_number: r.tahfidzSurahNumber ?? null,
+    tahfidz_surah_name: r.tahfidzSurahName || null,
+    tahfidz_ayat_range: r.tahfidzAyatRange || null,
+    grade: r.grade,
+    notes: r.notes || null,
+    created_at: r.createdAt || new Date().toISOString()
+  };
+}
+
+export function dbToStudent(row: any): Student {
+  return {
+    id: String(row.id),
+    name: String(row.name),
+    classId: row.classId || row.class_id || ''
+  };
+}
+
+export function studentToDb(s: Student): Record<string, any> {
+  return {
+    id: s.id,
+    name: s.name,
+    class_id: s.classId
+  };
+}
+
+export function dbToAuthAccount(row: any): AuthAccount {
+  return {
+    username: String(row.username),
+    passwordHash: row.passwordHash || row.password_hash || DEFAULT_PASSWORD,
+    role: row.role as UserRole,
+    name: String(row.name),
+    classId: row.classId || row.class_id || undefined,
+    studentName: row.studentName || row.student_name || undefined,
+    firstLogin: row.firstLogin ?? row.first_login ?? true
+  };
+}
+
+export function authAccountToDb(acc: AuthAccount): Record<string, any> {
+  return {
+    username: acc.username,
+    password_hash: acc.passwordHash,
+    role: acc.role,
+    name: acc.name,
+    class_id: acc.classId || null,
+    student_name: acc.studentName || null,
+    first_login: acc.firstLogin
+  };
+}
+
+export function dbToLog(row: any): ActivityLog {
+  return {
+    id: String(row.id),
+    timestamp: row.timestamp || row.created_at || new Date().toISOString(),
+    actionType: (row.actionType || row.action_type || 'EDIT_SISWA') as ActionType,
+    performedBy: row.performedBy || row.performed_by || 'Admin',
+    target: row.target || '',
+    details: row.details || ''
+  };
+}
+
+export function logToDb(log: ActivityLog): Record<string, any> {
+  return {
+    id: log.id,
+    timestamp: log.timestamp,
+    action_type: log.actionType,
+    performed_by: log.performedBy,
+    target: log.target,
+    details: log.details
+  };
+}
+
 class StorageManager {
   private teachers: Teacher[] = [];
   private students: Student[] = [];
@@ -53,12 +158,41 @@ class StorageManager {
   private records: MemorizationRecord[] = [];
   private logs: ActivityLog[] = [];
   private authAccounts: Record<string, AuthAccount> = {};
+  
+  private subscribers = new Set<() => void>();
+  private isSyncing = false;
+  private hasInitializedCloud = false;
 
   constructor() {
-    this.init();
+    this.initLocal();
+    // Auto sync from Supabase if connected
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        this.syncFromCloud().catch(err => console.warn('Cloud auto-sync warning:', err));
+        this.initRealtime();
+      }, 100);
+    }
   }
 
-  private init() {
+  // --- Pub/Sub for React Reactivity ---
+  public subscribe(callback: () => void): () => void {
+    this.subscribers.add(callback);
+    return () => {
+      this.subscribers.delete(callback);
+    };
+  }
+
+  private notify() {
+    this.subscribers.forEach(cb => {
+      try {
+        cb();
+      } catch (err) {
+        console.error('Subscriber callback error:', err);
+      }
+    });
+  }
+
+  private initLocal() {
     // 1. Classes
     try {
       const savedClasses = localStorage.getItem(STORAGE_KEYS.CLASSES);
@@ -83,7 +217,7 @@ class StorageManager {
       this.students = [...INITIAL_STUDENTS];
     }
 
-    // 4. Records: Bersih tanpa ada data simulasi (Empty on fresh start)
+    // 4. Records
     try {
       const savedRecords = localStorage.getItem(STORAGE_KEYS.RECORDS);
       this.records = savedRecords ? JSON.parse(savedRecords) : [];
@@ -114,7 +248,6 @@ class StorageManager {
   }
 
   private ensureDefaultAccounts() {
-    // Admin default
     if (!this.authAccounts['admin']) {
       this.authAccounts['admin'] = {
         username: 'admin',
@@ -125,7 +258,6 @@ class StorageManager {
       };
     }
 
-    // Teachers accounts
     for (const t of this.teachers) {
       const uKey = t.username.toLowerCase();
       if (!this.authAccounts[uKey]) {
@@ -141,6 +273,7 @@ class StorageManager {
   }
 
   private saveAll() {
+    if (typeof localStorage === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_KEYS.CLASSES, JSON.stringify(this.classes));
       localStorage.setItem(STORAGE_KEYS.TEACHERS, JSON.stringify(this.teachers));
@@ -150,6 +283,116 @@ class StorageManager {
       localStorage.setItem(STORAGE_KEYS.USERS_AUTH, JSON.stringify(this.authAccounts));
     } catch (e) {
       console.error('Storage save error:', e);
+    }
+  }
+
+  // --- Cloud Sync Implementation (Supabase) ---
+  public async syncFromCloud(): Promise<boolean> {
+    if (!supabase || this.isSyncing) return false;
+    this.isSyncing = true;
+
+    try {
+      // 1. Fetch Classes
+      const { data: cData, error: cErr } = await supabase.from('classes').select('*');
+      if (!cErr && cData && cData.length > 0) {
+        this.classes = cData.map(c => c.id).filter(Boolean);
+      }
+
+      // 2. Fetch Teachers
+      const { data: tData, error: tErr } = await supabase.from('teachers').select('*');
+      if (!tErr && tData && tData.length > 0) {
+        this.teachers = tData.map(t => ({
+          id: String(t.id),
+          name: String(t.name),
+          username: String(t.username)
+        }));
+      }
+
+      // 3. Fetch Students
+      const { data: sData, error: sErr } = await supabase.from('students').select('*').limit(2000);
+      if (!sErr && sData && sData.length > 0) {
+        this.students = sData.map(dbToStudent);
+      }
+
+      // 4. Fetch Auth Accounts
+      const { data: aData, error: aErr } = await supabase.from('auth_accounts').select('*').limit(3000);
+      if (!aErr && aData && aData.length > 0) {
+        const nextAccounts: Record<string, AuthAccount> = {};
+        for (const row of aData) {
+          const acc = dbToAuthAccount(row);
+          nextAccounts[acc.username.toLowerCase()] = acc;
+        }
+        this.authAccounts = nextAccounts;
+        this.ensureDefaultAccounts();
+      }
+
+      // 5. Fetch Memorization Records
+      const { data: rData, error: rErr } = await supabase
+        .from('memorization_records')
+        .select('*')
+        .order('date', { ascending: false })
+        .limit(3000);
+      if (!rErr && rData) {
+        this.records = rData.map(dbToRecord);
+      }
+
+      // 6. Fetch Logs
+      const { data: lData, error: lErr } = await supabase
+        .from('activity_logs')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(500);
+      if (!lErr && lData) {
+        this.logs = lData.map(dbToLog);
+      }
+
+      this.hasInitializedCloud = true;
+      this.saveAll();
+      this.notify();
+      return true;
+    } catch (err) {
+      console.warn('Sync from cloud encountered issue:', err);
+      return false;
+    } finally {
+      this.isSyncing = false;
+    }
+  }
+
+  // --- Realtime Cloud Listener ---
+  private initRealtime() {
+    if (!supabase) return;
+    try {
+      supabase
+        .channel('salam_cloud_realtime')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'memorization_records' }, (payload) => {
+          if (payload.eventType === 'INSERT' && payload.new) {
+            const newRec = dbToRecord(payload.new);
+            if (!this.records.some(r => r.id === newRec.id)) {
+              this.records.unshift(newRec);
+              this.saveAll();
+              this.notify();
+            }
+          } else if (payload.eventType === 'DELETE' && payload.old) {
+            const oldId = String((payload.old as any).id);
+            this.records = this.records.filter(r => r.id !== oldId);
+            this.saveAll();
+            this.notify();
+          } else {
+            this.syncFromCloud();
+          }
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'students' }, () => {
+          this.syncFromCloud();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'teachers' }, () => {
+          this.syncFromCloud();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'auth_accounts' }, () => {
+          this.syncFromCloud();
+        })
+        .subscribe();
+    } catch (err) {
+      console.warn('Supabase Realtime not available:', err);
     }
   }
 
@@ -191,6 +434,9 @@ class StorageManager {
           };
           this.authAccounts[uKey] = acc;
           this.saveAll();
+          if (supabase) {
+            Promise.resolve(supabase.from('auth_accounts').upsert([authAccountToDb(acc)])).catch(() => {});
+          }
         }
 
         if (acc.passwordHash !== passwordInput) {
@@ -231,7 +477,7 @@ class StorageManager {
           const user: User = {
             id: `u-${tKey}`,
             username: tAcc.username,
-            role: 'guru',
+            role: tAcc.role,
             name: tAcc.name,
             firstLogin: tAcc.firstLogin
           };
@@ -239,7 +485,7 @@ class StorageManager {
           return { user };
         }
       }
-      return { error: 'Username tidak ditemukan. Periksa kembali username atau format login.' };
+      return { error: 'Username tidak ditemukan dalam sistem.' };
     }
 
     if (acc.passwordHash !== passwordInput) {
@@ -260,7 +506,55 @@ class StorageManager {
     return { user };
   }
 
-  public changePassword(username: string, newPassword: string):boolean {
+  // Async login with Supabase remote verification
+  public async loginAsync(usernameInput: string, passwordInput: string): Promise<{ user?: User; error?: string }> {
+    // 1. Try local first for instant response
+    const localRes = this.login(usernameInput, passwordInput);
+    if (localRes.user) {
+      return localRes;
+    }
+
+    // 2. If local fails and cloud is connected, check cloud auth_accounts
+    if (supabase) {
+      try {
+        const lower = usernameInput.trim().toLowerCase();
+        const { data, error } = await supabase
+          .from('auth_accounts')
+          .select('*')
+          .ilike('username', lower)
+          .maybeSingle();
+
+        if (!error && data) {
+          const acc = dbToAuthAccount(data);
+          this.authAccounts[acc.username.toLowerCase()] = acc;
+          this.saveAll();
+
+          if (acc.passwordHash === passwordInput) {
+            const user: User = {
+              id: `u-${acc.username.toLowerCase()}`,
+              username: acc.username,
+              role: acc.role,
+              name: acc.name,
+              classId: acc.classId,
+              studentName: acc.studentName,
+              firstLogin: acc.firstLogin
+            };
+            this.setCurrentUser(user);
+            this.notify();
+            return { user };
+          } else {
+            return { error: 'Password salah. Password default awal adalah "salsabila3".' };
+          }
+        }
+      } catch (err) {
+        console.warn('Remote login check error:', err);
+      }
+    }
+
+    return localRes;
+  }
+
+  public changePassword(username: string, newPassword: string): boolean {
     const key = username.toLowerCase();
     const acc = this.authAccounts[key];
     if (acc) {
@@ -268,26 +562,21 @@ class StorageManager {
       acc.firstLogin = false;
       this.saveAll();
 
-      // update current user if matches
       const current = this.getCurrentUser();
       if (current && current.username.toLowerCase() === key) {
         current.firstLogin = false;
         this.setCurrentUser(current);
       }
+
+      this.notify();
+
       if (supabase) {
-        Promise.resolve(supabase.from('auth_accounts').upsert([{
-          username: acc.username,
-          password_hash: acc.passwordHash,
-          passwordHash: acc.passwordHash,
-          role: acc.role,
-          name: acc.name,
-          class_id: acc.classId || null,
-          classId: acc.classId || null,
-          student_name: acc.studentName || null,
-          studentName: acc.studentName || null,
-          first_login: acc.firstLogin,
-          firstLogin: acc.firstLogin
-        }])).catch(() => {});
+        Promise.resolve(
+          supabase
+            .from('auth_accounts')
+            .update({ password_hash: newPassword, first_login: false })
+            .ilike('username', key)
+        ).catch(err => console.warn('Supabase password change error:', err));
       }
       return true;
     }
@@ -300,7 +589,6 @@ class StorageManager {
     let acc = this.authAccounts[key];
 
     if (!acc) {
-      // Check if it's a teacher
       const teacher = this.teachers.find(
         t => t.username.toLowerCase() === key || normalizeStr(t.name) === normalizeStr(raw)
       );
@@ -314,29 +602,12 @@ class StorageManager {
         };
         this.authAccounts[teacher.username.toLowerCase()] = acc;
       } else if (key.startsWith('wali.')) {
-        // Check if it's wali format: wali.(Kelas).(Nama)
         const parts = raw.split('.');
         const classPart = parts[1]?.trim().toUpperCase();
         const studentNamePart = parts.slice(2).join('.').trim();
         const student = this.students.find(
           s => s.classId.toUpperCase() === classPart && normalizeStr(s.name) === normalizeStr(studentNamePart)
         );
-        if (student) {
-          const exactUsername = makeWaliUsername(student.classId, student.name);
-          acc = {
-            username: exactUsername,
-            passwordHash: DEFAULT_PASSWORD,
-            role: 'wali',
-            name: `Wali dari ${student.name}`,
-            classId: student.classId,
-            studentName: student.name,
-            firstLogin: true
-          };
-          this.authAccounts[exactUsername.toLowerCase()] = acc;
-        }
-      } else {
-        // Check if it's a student by name directly
-        const student = this.students.find(s => normalizeStr(s.name) === normalizeStr(raw));
         if (student) {
           const exactUsername = makeWaliUsername(student.classId, student.name);
           acc = {
@@ -358,6 +629,7 @@ class StorageManager {
     acc.passwordHash = DEFAULT_PASSWORD;
     acc.firstLogin = true;
     this.saveAll();
+    this.notify();
 
     this.addLog(
       'RESET_PASSWORD',
@@ -367,19 +639,12 @@ class StorageManager {
     );
 
     if (supabase) {
-      Promise.resolve(supabase.from('auth_accounts').upsert([{
-        username: acc.username,
-        password_hash: acc.passwordHash,
-        passwordHash: acc.passwordHash,
-        role: acc.role,
-        name: acc.name,
-        class_id: acc.classId || null,
-        classId: acc.classId || null,
-        student_name: acc.studentName || null,
-        studentName: acc.studentName || null,
-        first_login: acc.firstLogin,
-        firstLogin: acc.firstLogin
-      }])).catch(() => {});
+      Promise.resolve(
+        supabase
+          .from('auth_accounts')
+          .update({ password_hash: DEFAULT_PASSWORD, first_login: true })
+          .ilike('username', key)
+      ).catch(err => console.warn('Supabase reset password error:', err));
     }
 
     return true;
@@ -416,9 +681,12 @@ class StorageManager {
     if (!trimmed || this.classes.includes(trimmed)) return false;
     this.classes.push(trimmed);
     this.saveAll();
+    this.notify();
     this.addLog('EDIT_SISWA', adminName, trimmed, `Menambahkan kelas baru ${trimmed}`);
+
     if (supabase) {
-      Promise.resolve(supabase.from('classes').insert([{ id: trimmed }])).catch(() => {});
+      Promise.resolve(supabase.from('classes').insert([{ id: trimmed }]))
+        .catch(err => console.warn('Supabase add class error:', err));
     }
     return true;
   }
@@ -438,29 +706,22 @@ class StorageManager {
     };
     this.teachers.push(newTeacher);
 
-    // Auth account
-    this.authAccounts[cleanUsername] = {
+    const authAcc: AuthAccount = {
       username: cleanUsername,
       passwordHash: DEFAULT_PASSWORD,
       role: 'guru',
       name: newTeacher.name,
       firstLogin: true
     };
+    this.authAccounts[cleanUsername] = authAcc;
 
     this.saveAll();
+    this.notify();
     this.addLog('TAMBAH_GURU', adminName, newTeacher.name, `Menambahkan guru baru: ${newTeacher.name} (username: ${cleanUsername})`);
 
     if (supabase) {
       Promise.resolve(supabase.from('teachers').insert([newTeacher])).catch(() => {});
-      Promise.resolve(supabase.from('auth_accounts').insert([{
-        username: cleanUsername,
-        password_hash: DEFAULT_PASSWORD,
-        passwordHash: DEFAULT_PASSWORD,
-        role: 'guru',
-        name: newTeacher.name,
-        first_login: true,
-        firstLogin: true
-      }])).catch(() => {});
+      Promise.resolve(supabase.from('auth_accounts').insert([authAccountToDb(authAcc)])).catch(() => {});
     }
 
     return newTeacher;
@@ -473,7 +734,6 @@ class StorageManager {
     const oldKey = oldTeacher.username.toLowerCase();
     const newKey = username.trim().toLowerCase();
 
-    // Preserve existing password if any
     const existingAuth = this.authAccounts[oldKey];
     if (oldKey !== newKey && existingAuth) {
       delete this.authAccounts[oldKey];
@@ -493,10 +753,16 @@ class StorageManager {
     };
 
     this.saveAll();
+    this.notify();
     this.addLog('EDIT_GURU', adminName, name, `Memperbarui data guru ${oldTeacher.name} -> ${name.trim()}`);
 
     if (supabase) {
       Promise.resolve(supabase.from('teachers').update({ name: name.trim(), username: newKey }).eq('id', id)).catch(() => {});
+      if (oldKey !== newKey) {
+        Promise.resolve(supabase.from('auth_accounts').update({ username: newKey, name: name.trim() }).eq('username', oldKey)).catch(() => {});
+      } else {
+        Promise.resolve(supabase.from('auth_accounts').update({ name: name.trim() }).eq('username', newKey)).catch(() => {});
+      }
     }
 
     return true;
@@ -508,11 +774,12 @@ class StorageManager {
     this.teachers = this.teachers.filter(t => t.id !== id);
     delete this.authAccounts[teacher.username.toLowerCase()];
     this.saveAll();
+    this.notify();
     this.addLog('HAPUS_GURU', adminName, teacher.name, `Menghapus data guru ${teacher.name}`);
 
     if (supabase) {
       Promise.resolve(supabase.from('teachers').delete().eq('id', id)).catch(() => {});
-      Promise.resolve(supabase.from('auth_accounts').delete().eq('username', teacher.username.toLowerCase())).catch(() => {});
+      Promise.resolve(supabase.from('auth_accounts').delete().ilike('username', teacher.username)).catch(() => {});
     }
 
     return true;
@@ -533,16 +800,29 @@ class StorageManager {
       classId: classId.trim().toUpperCase()
     };
     this.students.push(newStudent);
+
+    // Auto create auth account for wali
+    const waliUname = makeWaliUsername(newStudent.classId, newStudent.name);
+    const waliAcc: AuthAccount = {
+      username: waliUname,
+      passwordHash: DEFAULT_PASSWORD,
+      role: 'wali',
+      name: `Wali dari ${newStudent.name}`,
+      classId: newStudent.classId,
+      studentName: newStudent.name,
+      firstLogin: true
+    };
+    this.authAccounts[waliUname.toLowerCase()] = waliAcc;
+
     this.saveAll();
+    this.notify();
     this.addLog('TAMBAH_SISWA', adminName, newStudent.name, `Menambahkan siswa baru kelas ${newStudent.classId}: ${newStudent.name}`);
 
     if (supabase) {
-      Promise.resolve(supabase.from('students').insert([{
-        id: newStudent.id,
-        name: newStudent.name,
-        class_id: newStudent.classId,
-        classId: newStudent.classId
-      }])).catch(() => {});
+      Promise.resolve(supabase.from('students').insert([studentToDb(newStudent)]))
+        .catch(err => console.warn('Supabase add student error:', err));
+      Promise.resolve(supabase.from('auth_accounts').insert([authAccountToDb(waliAcc)]))
+        .catch(err => console.warn('Supabase add wali account error:', err));
     }
 
     return newStudent;
@@ -552,20 +832,19 @@ class StorageManager {
     const index = this.students.findIndex(s => s.id === id);
     if (index === -1) return false;
     const old = this.students[index];
-    this.students[index] = {
+    const updatedStudent: Student = {
       id,
       name: name.trim().toUpperCase(),
       classId: classId.trim().toUpperCase()
     };
+    this.students[index] = updatedStudent;
     this.saveAll();
+    this.notify();
     this.addLog('EDIT_SISWA', adminName, name, `Memperbarui siswa ${old.name} (${old.classId}) -> ${name.trim()} (${classId})`);
 
     if (supabase) {
-      Promise.resolve(supabase.from('students').update({
-        name: name.trim().toUpperCase(),
-        class_id: classId.trim().toUpperCase(),
-        classId: classId.trim().toUpperCase()
-      }).eq('id', id)).catch(() => {});
+      Promise.resolve(supabase.from('students').update(studentToDb(updatedStudent)).eq('id', id))
+        .catch(err => console.warn('Supabase update student error:', err));
     }
 
     return true;
@@ -575,11 +854,18 @@ class StorageManager {
     const student = this.students.find(s => s.id === id);
     if (!student) return false;
     this.students = this.students.filter(s => s.id !== id);
+    const waliKey = makeWaliUsername(student.classId, student.name).toLowerCase();
+    delete this.authAccounts[waliKey];
+
     this.saveAll();
+    this.notify();
     this.addLog('HAPUS_SISWA', adminName, student.name, `Menghapus siswa ${student.name} dari kelas ${student.classId}`);
 
     if (supabase) {
-      Promise.resolve(supabase.from('students').delete().eq('id', id)).catch(() => {});
+      Promise.resolve(supabase.from('students').delete().eq('id', id))
+        .catch(err => console.warn('Supabase delete student error:', err));
+      Promise.resolve(supabase.from('auth_accounts').delete().ilike('username', waliKey))
+        .catch(() => {});
     }
 
     return true;
@@ -597,7 +883,7 @@ class StorageManager {
   }): MemorizationRecord[] {
     let result = [...this.records];
 
-    if (filter?.classId) {
+    if (filter?.classId && filter.classId !== 'ALL') {
       result = result.filter(r => r.classId.toUpperCase() === filter.classId!.toUpperCase());
     }
     if (filter?.studentId) {
@@ -632,10 +918,13 @@ class StorageManager {
     };
     this.records.unshift(newRecord);
     this.saveAll();
+    this.notify();
 
-    // Async sync to cloud if connected
+    // Async sync to Supabase online database
     if (supabase) {
-      Promise.resolve(supabase.from('memorization_records').insert([newRecord])).catch((err: unknown) => {
+      Promise.resolve(
+        supabase.from('memorization_records').insert([recordToDb(newRecord)])
+      ).catch((err: unknown) => {
         console.warn('Cloud sync error for record:', err);
       });
     }
@@ -648,25 +937,24 @@ class StorageManager {
     if (!target) return false;
     this.records = this.records.filter(r => r.id !== id);
     this.saveAll();
+    this.notify();
     this.addLog('HAPUS_SETORAN', userName, target.studentName, `Menghapus setoran ${target.type} tanggal ${target.date} untuk ${target.studentName}`);
 
     if (supabase) {
-      Promise.resolve(supabase.from('memorization_records').delete().eq('id', id)).catch((err: unknown) => console.warn(err));
+      Promise.resolve(supabase.from('memorization_records').delete().eq('id', id))
+        .catch((err: unknown) => console.warn('Supabase delete record error:', err));
     }
     return true;
   }
 
   // --- getRekapGuru(kelas, bulan, tahun) ---
-  // Fungsi server-compatible / backend helper untuk filter rekap capaian
   public getRekapGuru(kelas: string, bulan: number | string, tahun: number | string): MemorizationRecord[] {
     return this.records.filter(r => {
-      // 1. Filter kelas
       if (kelas && kelas !== 'ALL' && r.classId.toUpperCase() !== kelas.toUpperCase()) {
         return false;
       }
-      // 2. Filter tanggal (format YYYY-MM-DD)
       const recordDate = new Date(r.date);
-      const rMonth = recordDate.getMonth() + 1; // 1-12
+      const rMonth = recordDate.getMonth() + 1;
       const rYear = recordDate.getFullYear();
 
       if (bulan && bulan !== 'ALL' && rMonth !== Number(bulan)) {
@@ -695,14 +983,14 @@ class StorageManager {
       details
     };
     this.logs.unshift(log);
-    // Keep max 1000 logs
     if (this.logs.length > 1000) {
       this.logs = this.logs.slice(0, 1000);
     }
     this.saveAll();
+    this.notify();
 
     if (supabase) {
-      Promise.resolve(supabase.from('activity_logs').insert([log])).catch((err: unknown) => console.warn(err));
+      Promise.resolve(supabase.from('activity_logs').insert([logToDb(log)])).catch((err: unknown) => console.warn(err));
     }
   }
 
@@ -765,3 +1053,5 @@ class StorageManager {
 }
 
 export const storage = new StorageManager();
+export { useStorageSubscription } from '../hooks/useStorage';
+
