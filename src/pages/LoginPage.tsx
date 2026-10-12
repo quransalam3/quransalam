@@ -94,8 +94,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         {/* Emblem & Title */}
         <div className="flex justify-center mb-3">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#00C2A0] to-[#008E75] flex items-center justify-center text-white font-extrabold text-2xl shadow-lg border-2 border-teal-200">
-            <span className="font-serif">SQ</span>
+          <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-lg border-2 border-teal-200 bg-teal-50 flex items-center justify-center">
+            <img 
+              src="/pwa-192x192.png" 
+              alt="SALAM Quran Emblem" 
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
           </div>
         </div>
 

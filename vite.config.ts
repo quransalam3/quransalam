@@ -11,7 +11,7 @@ export default defineConfig(() => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'icon.svg'],
+        includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'icon.svg', 'pwa-192x192.png', 'pwa-512x512.png', "Qur'an.png"],
         manifest: {
           id: '/',
           name: 'SALAM Quran - SD IT Salsabila 3 Banguntapan',

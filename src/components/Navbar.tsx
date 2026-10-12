@@ -48,8 +48,13 @@ export const Navbar: React.FC<NavbarProps> = ({ user, onLogout }) => {
           <div className="flex items-center justify-between h-16">
             {/* Logo and Brand */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#00C2A0] to-[#008E75] flex items-center justify-center text-white font-extrabold text-lg shadow-sm border border-teal-200 shrink-0">
-                <span className="font-serif">SQ</span>
+              <div className="w-10 h-10 rounded-xl overflow-hidden shadow-sm border border-teal-200 shrink-0 bg-teal-50 flex items-center justify-center">
+                <img 
+                  src="/pwa-192x192.png" 
+                  alt="SALAM Quran" 
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
               </div>
               <div>
                 <div className="flex items-center gap-2">
