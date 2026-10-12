@@ -990,13 +990,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) =
               <div>
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 text-[#008E75] text-xs font-bold mb-1.5">
                   <Database className="w-3.5 h-3.5" />
-                  <span>Struktur Tabel & Data Lengkap Supabase</span>
+                  <span>Struktur Tabel & Data Master Supabase</span>
                 </div>
                 <h3 className="text-base font-bold text-[#3F4E5A]">
-                  Skrip Struktur Tabel SQL & Seluruh Data Simulasi
+                  Skrip SQL Editor & Table Editor (Online, Realtime & Domain Vercel)
                 </h3>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Skrip ini mencakup struktur 6 tabel database, kebijakan RLS, serta seluruh data awal ({classes.length} kelas, {teachers.length} guru, {students.length} santri, dan akun login).
+                  Skrip ini mencakup struktur 6 tabel database, trigger sinkronisasi untuk Table Editor Supabase, publikasi realtime, izin RLS untuk domain Vercel, serta data master awal ({classes.length} kelas, {teachers.length} dewan guru, {students.length} santri, dan akun login bersih dengan password awal salsabila3 tanpa data simulasi).
                 </p>
               </div>
 
@@ -1040,10 +1040,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) =
                 👦👧 {students.length} Siswa Terdaftar
               </span>
               <span className="px-2.5 py-1 bg-gray-100 rounded-lg border border-gray-200">
-                🔑 Akun Login (Default: salsabila3)
+                🔑 Password Default: salsabila3
               </span>
-              <span className="px-2.5 py-1 bg-gray-100 rounded-lg border border-gray-200">
-                🛡️ RLS & Public Policies
+              <span className="px-2.5 py-1 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-200">
+                ⚡ Table Editor & Realtime
+              </span>
+              <span className="px-2.5 py-1 bg-teal-50 text-teal-800 rounded-lg border border-teal-200">
+                🌐 Siap Akses Domain Vercel
               </span>
             </div>
 
@@ -1051,14 +1054,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser }) =
             <div className="p-4 rounded-2xl bg-teal-50/60 border border-teal-200/70 text-xs text-teal-900 space-y-2">
               <p className="font-bold flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-[#00C2A0]" />
-                <span>Petunjuk Eksekusi di Supabase Dashboard:</span>
+                <span>Petunjuk Eksekusi di Supabase Dashboard untuk Vercel & Table Editor:</span>
               </p>
               <ol className="list-decimal list-inside space-y-1 text-[11px] text-teal-800">
                 <li>Buka dashboard proyek Supabase Anda: <code className="bg-white px-1.5 py-0.5 rounded font-mono text-[#008E75] font-semibold">{cloudUrl || 'https://ubyrtmcrdeltgcfurouy.supabase.co'}</code></li>
                 <li>Pada bilah menu sebelah kiri, pilih menu <strong>SQL Editor</strong>.</li>
                 <li>Klik tombol <strong>New query</strong> (+).</li>
                 <li>Klik tombol <strong>Salin Skrip SQL</strong> di atas, lalu tempelkan (paste) ke editor query Supabase.</li>
-                <li>Klik tombol hijau <strong>Run</strong> (atau tekan Ctrl+Enter). Seluruh tabel dan {students.length} data siswa akan langsung terpasang dan tersinkronisasi otomatis!</li>
+                <li>Klik tombol hijau <strong>Run</strong> (atau tekan Ctrl+Enter). Seluruh tabel, trigger Table Editor, izin akses domain Vercel, dan {students.length} data santri akan langsung terpasang dan tersinkronisasi online!</li>
+                <li>Data di <strong>Table Editor</strong> Supabase dapat Anda lihat atau ubah kapan saja dan akan langsung tersinkron secara realtime ke aplikasi di domain Vercel.</li>
               </ol>
             </div>
 

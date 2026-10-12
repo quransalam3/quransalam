@@ -1,4 +1,4 @@
-import { Teacher, Student, Surah } from '../types';
+import { Teacher, Student, Surah, MemorizationRecord, ActivityLog } from '../types';
 
 export const INITIAL_CLASSES = [
   '1A', '1B', '1C',
@@ -694,3 +694,9 @@ export const QURAN_SURAHS: Surah[] = [
   { number: 113, name: 'Al-Falaq', arabicName: 'الفلق', totalAyat: 5, juzStart: 30 },
   { number: 114, name: 'An-Nas', arabicName: 'الناس', totalAyat: 6, juzStart: 30 },
 ];
+
+export const INITIAL_RECORDS: MemorizationRecord[] = [];
+
+export const INITIAL_LOGS: ActivityLog[] = [];
+
+

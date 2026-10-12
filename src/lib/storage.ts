@@ -11,7 +11,9 @@ import {
 import { 
   INITIAL_CLASSES, 
   INITIAL_TEACHERS, 
-  INITIAL_STUDENTS 
+  INITIAL_STUDENTS,
+  INITIAL_RECORDS,
+  INITIAL_LOGS
 } from '../data/initialData';
 import { supabase, isCloudConnected } from './supabaseClient';
 
@@ -106,14 +108,16 @@ export function studentToDb(s: Student): Record<string, any> {
 }
 
 export function dbToAuthAccount(row: any): AuthAccount {
+  const pHash = row.password_hash || row.passwordHash || DEFAULT_PASSWORD;
+  const fLogin = row.first_login !== undefined ? row.first_login : (row.firstLogin !== undefined ? row.firstLogin : true);
   return {
     username: String(row.username),
-    passwordHash: row.passwordHash || row.password_hash || DEFAULT_PASSWORD,
+    passwordHash: pHash,
     role: row.role as UserRole,
     name: String(row.name),
-    classId: row.classId || row.class_id || undefined,
-    studentName: row.studentName || row.student_name || undefined,
-    firstLogin: row.firstLogin ?? row.first_login ?? true
+    classId: row.class_id || row.classId || undefined,
+    studentName: row.student_name || row.studentName || undefined,
+    firstLogin: Boolean(fLogin)
   };
 }
 
@@ -121,11 +125,15 @@ export function authAccountToDb(acc: AuthAccount): Record<string, any> {
   return {
     username: acc.username,
     password_hash: acc.passwordHash,
+    "passwordHash": acc.passwordHash,
     role: acc.role,
     name: acc.name,
     class_id: acc.classId || null,
+    "classId": acc.classId || null,
     student_name: acc.studentName || null,
-    first_login: acc.firstLogin
+    "studentName": acc.studentName || null,
+    first_login: acc.firstLogin,
+    "firstLogin": acc.firstLogin
   };
 }
 
@@ -217,18 +225,32 @@ class StorageManager {
       this.students = [...INITIAL_STUDENTS];
     }
 
-    // 4. Records
+    // 4. Records (Bersih tanpa data simulasi)
     try {
       const savedRecords = localStorage.getItem(STORAGE_KEYS.RECORDS);
-      this.records = savedRecords ? JSON.parse(savedRecords) : [];
+      if (savedRecords) {
+        const parsed = JSON.parse(savedRecords);
+        this.records = Array.isArray(parsed) 
+          ? parsed.filter((r: any) => !String(r.id || '').startsWith('rec-demo-'))
+          : [];
+      } else {
+        this.records = [];
+      }
     } catch {
       this.records = [];
     }
 
-    // 5. Activity Logs
+    // 5. Activity Logs (Bersih tanpa log simulasi)
     try {
       const savedLogs = localStorage.getItem(STORAGE_KEYS.LOGS);
-      this.logs = savedLogs ? JSON.parse(savedLogs) : [];
+      if (savedLogs) {
+        const parsed = JSON.parse(savedLogs);
+        this.logs = Array.isArray(parsed)
+          ? parsed.filter((l: any) => !String(l.id || '').startsWith('log-demo-'))
+          : [];
+      } else {
+        this.logs = [];
+      }
     } catch {
       this.logs = [];
     }
@@ -258,6 +280,7 @@ class StorageManager {
       };
     }
 
+    // Semua password bawaan awal guru adalah salsabila3
     for (const t of this.teachers) {
       const uKey = t.username.toLowerCase();
       if (!this.authAccounts[uKey]) {
@@ -268,6 +291,9 @@ class StorageManager {
           name: t.name,
           firstLogin: true
         };
+      } else if (this.authAccounts[uKey].firstLogin) {
+        // Jika belum pernah login/ganti password mandiri, pastikan tetap salsabila3
+        this.authAccounts[uKey].passwordHash = DEFAULT_PASSWORD;
       }
     }
   }
@@ -555,15 +581,19 @@ class StorageManager {
   }
 
   public changePassword(username: string, newPassword: string): boolean {
-    const key = username.toLowerCase();
-    const acc = this.authAccounts[key];
+    const raw = username.trim();
+    const key = raw.toLowerCase();
+    const acc = this.authAccounts[key] || this.authAccounts[raw];
     if (acc) {
       acc.passwordHash = newPassword;
       acc.firstLogin = false;
+      this.authAccounts[key] = acc;
+      this.authAccounts[acc.username.toLowerCase()] = acc;
+      this.authAccounts[acc.username] = acc;
       this.saveAll();
 
       const current = this.getCurrentUser();
-      if (current && current.username.toLowerCase() === key) {
+      if (current && (current.username.toLowerCase() === key || current.username === raw)) {
         current.firstLogin = false;
         this.setCurrentUser(current);
       }
@@ -571,11 +601,11 @@ class StorageManager {
       this.notify();
 
       if (supabase) {
+        const payload = authAccountToDb(acc);
         Promise.resolve(
           supabase
             .from('auth_accounts')
-            .update({ password_hash: newPassword, first_login: false })
-            .ilike('username', key)
+            .upsert([payload], { onConflict: 'username' })
         ).catch(err => console.warn('Supabase password change error:', err));
       }
       return true;
@@ -586,7 +616,7 @@ class StorageManager {
   public resetPassword(username: string, adminName: string): boolean {
     const raw = username.trim();
     const key = raw.toLowerCase();
-    let acc = this.authAccounts[key];
+    let acc = this.authAccounts[key] || this.authAccounts[raw];
 
     if (!acc) {
       const teacher = this.teachers.find(
@@ -626,8 +656,12 @@ class StorageManager {
 
     if (!acc) return false;
 
+    // Kembalikan kata sandi ke standar awal (salsabila3) dan wajib ganti saat login berikutnya
     acc.passwordHash = DEFAULT_PASSWORD;
     acc.firstLogin = true;
+    this.authAccounts[key] = acc;
+    this.authAccounts[acc.username.toLowerCase()] = acc;
+    this.authAccounts[acc.username] = acc;
     this.saveAll();
     this.notify();
 
@@ -639,11 +673,11 @@ class StorageManager {
     );
 
     if (supabase) {
+      const payload = authAccountToDb(acc);
       Promise.resolve(
         supabase
           .from('auth_accounts')
-          .update({ password_hash: DEFAULT_PASSWORD, first_login: true })
-          .ilike('username', key)
+          .upsert([payload], { onConflict: 'username' })
       ).catch(err => console.warn('Supabase reset password error:', err));
     }
 
