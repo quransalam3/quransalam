@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, MemorizationType, ScoreGrade, MemorizationRecord } from '../types';
+import { User, MemorizationType, ScoreGrade, MemorizationRecord, TahfidzActivity } from '../types';
 import { storage, useStorageSubscription } from '../lib/storage';
 import { YANFAUNA_BOOKS, QURAN_SURAHS } from '../data/initialData';
 import { LetterheadKop } from '../components/LetterheadKop';
@@ -55,6 +55,7 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
   const [tahsinLastAyat, setTahsinLastAyat] = useState<string>('');
 
   // Tahfidz states
+  const [tahfidzActivity, setTahfidzActivity] = useState<TahfidzActivity>('Ziyadah (Tambahan)');
   const [tahfidzJuz, setTahfidzJuz] = useState<number>(30); // Default juz 30 (Juz 'Amma) which is commonly started
   const [tahfidzSurahNumber, setTahfidzSurahNumber] = useState<number>(78); // An-Naba'
   const [tahfidzAyatRange, setTahfidzAyatRange] = useState<string>('1 - 10');
@@ -79,6 +80,7 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
   const [rekapClass, setRekapClass] = useState<string>('1A');
   const [rekapMonth, setRekapMonth] = useState<number | string>(currentMonth);
   const [rekapYear, setRekapYear] = useState<number | string>(defaultYear);
+  const [rekapJenis, setRekapJenis] = useState<'all' | 'tahsin' | 'tahfidz'>('all');
   const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
 
   // Dynamic lists from storage
@@ -224,6 +226,7 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
       tahsinSurahNumber: type === 'tahsin' && tahsinBook === "Al-Qur'an" ? Number(tahsinSurahNumber) : undefined,
       tahsinSurahName: type === 'tahsin' && tahsinBook === "Al-Qur'an" ? (selectedTahsinSurah?.name || `Surat ke-${tahsinSurahNumber}`) : undefined,
       tahsinLastAyat: type === 'tahsin' && tahsinBook === "Al-Qur'an" ? tahsinLastAyat : undefined,
+      tahfidzActivity: type === 'tahfidz' ? tahfidzActivity : undefined,
       tahfidzJuz: type === 'tahfidz' ? Number(tahfidzJuz) : undefined,
       tahfidzSurahNumber: type === 'tahfidz' ? Number(tahfidzSurahNumber) : undefined,
       tahfidzSurahName: type === 'tahfidz' ? (selectedTahfidzSurah?.name || `Surat ke-${tahfidzSurahNumber}`) : undefined,
@@ -247,10 +250,10 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
   };
 
   // Recap filtering
-  const rekapData = storage.getRekapGuru(rekapClass, rekapMonth, rekapYear);
+  const rekapData = storage.getRekapGuru(rekapClass, rekapMonth, rekapYear, rekapJenis);
 
   const handleDownloadExcel = () => {
-    exportRekapToExcel(rekapData, rekapClass, rekapMonth, rekapYear);
+    exportRekapToExcel(rekapData, rekapClass, rekapMonth, rekapYear, rekapJenis);
   };
 
   const handlePrint = () => {
@@ -497,14 +500,30 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
               <div className="p-4 rounded-2xl bg-teal-50/50 border border-teal-100 space-y-4 animate-in fade-in">
                 <div className="text-xs font-bold text-[#008E75] flex items-center gap-1.5">
                   <Bookmark className="w-3.5 h-3.5" />
-                  <span>Detail Materi Tahfidz (114 Surat & Juz)</span>
+                  <span>Detail Materi Tahfidz</span>
+                </div>
+
+                {/* 1. Aktifitas Pembelajaran */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Aktifitas Pembelajaran
+                  </label>
+                  <select
+                    value={tahfidzActivity}
+                    onChange={(e) => setTahfidzActivity(e.target.value as TahfidzActivity)}
+                    className="w-full px-3 py-2 bg-white rounded-xl border border-gray-200 text-xs font-medium focus:ring-2 focus:ring-[#00C2A0]"
+                  >
+                    <option value="Ziyadah (Tambahan)">Ziyadah (Tambahan)</option>
+                    <option value="Murojaah (Mengulang)">Murojaah (Mengulang)</option>
+                    <option value="Evaluasi (Penilaian Hafalan)">Evaluasi (Penilaian Hafalan)</option>
+                  </select>
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {/* Dropdown Juz 1 - 30 */}
+                  {/* 2. Juz 1-30 */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Juz (1 - 30)
+                      Juz 1-30
                     </label>
                     <select
                       value={tahfidzJuz}
@@ -517,10 +536,10 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
                     </select>
                   </div>
 
-                  {/* Dropdown Semua 114 Surat */}
+                  {/* 3. Surat 114 */}
                   <div className="sm:col-span-2">
                     <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Surat dalam Al-Qur'an (114 Surat)
+                      Surat
                     </label>
                     <select
                       value={tahfidzSurahNumber}
@@ -536,7 +555,7 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
                   </div>
                 </div>
 
-                {/* Rentang Ayat */}
+                {/* 4. Rentang Ayat */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-1">
                     Rentang Ayat
@@ -545,7 +564,7 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
                     type="text"
                     value={tahfidzAyatRange}
                     onChange={(e) => setTahfidzAyatRange(e.target.value)}
-                    placeholder="Contoh: 1 - 15 atau Lengkap"
+                    placeholder="Tulis manual, contoh: 1 - 10 atau 1 - 30"
                     required
                     className="w-full px-3 py-2 bg-white rounded-xl border border-gray-200 text-xs focus:ring-2 focus:ring-[#00C2A0]"
                   />
@@ -567,6 +586,7 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
                 <option value="A (Mumtaz)">A (Mumtaz)</option>
                 <option value="A- (Jayyid Jiddan)">A- (Jayyid Jiddan)</option>
                 <option value="B (Jayyid)">B (Jayyid)</option>
+                <option value="Mengulang">Mengulang</option>
               </select>
             </div>
 
@@ -732,7 +752,8 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
                           )
                         ) : (
                           <span>
-                            🌟 <strong>Surat {rec.tahfidzSurahName}</strong> (Juz {rec.tahfidzJuz}), Ayat {rec.tahfidzAyatRange}
+                            🌟 {rec.tahfidzActivity ? <strong className="text-emerald-700">[{rec.tahfidzActivity}] </strong> : null}
+                            <strong>Surat {rec.tahfidzSurahName}</strong> (Juz {rec.tahfidzJuz}), Ayat {rec.tahfidzAyatRange}
                           </span>
                         )}
                       </div>
@@ -751,15 +772,19 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
                     </div>
 
                     <div className="flex flex-col items-end gap-2">
-                      <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-[#00C2A0]/10 text-[#008E75] border border-[#00C2A0]/20 whitespace-nowrap">
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border whitespace-nowrap ${
+                        rec.grade === 'Mengulang'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : 'bg-[#00C2A0]/10 text-[#008E75] border-[#00C2A0]/20'
+                      }`}>
                         {rec.grade}
                       </span>
                       <button
                         onClick={() => handleDeleteRecord(rec.id)}
-                        className="text-gray-300 hover:text-red-500 p-1 rounded-md transition cursor-pointer opacity-0 group-hover:opacity-100"
+                        className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition cursor-pointer"
                         title="Hapus rekaman ini"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
                       </button>
                     </div>
                   </div>
@@ -845,8 +870,23 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
           </div>
         )}
 
-        {/* Flexible Filter Form: Kelas, Bulan, Tahun */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-5 rounded-2xl bg-[#FDFDFD] border border-gray-100 mb-6">
+        {/* Flexible Filter Form: Jenis, Kelas, Bulan, Tahun */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-5 rounded-2xl bg-[#FDFDFD] border border-gray-100 mb-6">
+          <div>
+            <label className="block text-xs font-bold text-[#3F4E5A] mb-1">
+              Pilihan Rekap Pembelajaran
+            </label>
+            <select
+              value={rekapJenis}
+              onChange={(e) => setRekapJenis(e.target.value as 'all' | 'tahsin' | 'tahfidz')}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-teal-300 text-xs font-bold text-[#008E75] focus:ring-2 focus:ring-[#00C2A0] bg-teal-50/50"
+            >
+              <option value="all">Semua (Tahsin & Tahfidz)</option>
+              <option value="tahsin">Khusus Rekapan Tahsin</option>
+              <option value="tahfidz">Khusus Rekapan Tahfidz</option>
+            </select>
+          </div>
+
           <div>
             <label className="block text-xs font-bold text-[#3F4E5A] mb-1">
               Kombinasi Kelas
@@ -901,6 +941,11 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
           <div className="flex items-center justify-between mb-3 text-xs">
             <span className="font-bold text-[#3F4E5A]">
               Hasil Filter: <span className="text-[#00C2A0]">{rekapData.length} Data Capaian Ditemukan</span>
+              {rekapJenis !== 'all' && (
+                <span className="ml-2 px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 font-bold text-[10px]">
+                  {rekapJenis === 'tahsin' ? 'Rekap Tahsin' : 'Rekap Tahfidz'}
+                </span>
+              )}
             </span>
             <span className="text-gray-400">
               Periode: {rekapMonth === 'ALL' ? 'Semua Bulan' : getMonthLabel(rekapMonth)} {rekapYear}
@@ -948,7 +993,7 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
                           ? (row.tahsinBook === "Al-Qur'an"
                               ? `Al-Qur'an: Surat ${row.tahsinSurahName || '-'} (Ayat Terakhir: ${row.tahsinLastAyat || '-'})`
                               : `${row.tahsinBook} (Hal. ${row.tahsinPage})`)
-                          : `Surat ${row.tahfidzSurahName} (Ayat ${row.tahfidzAyatRange})`}
+                          : `${row.tahfidzActivity ? `[${row.tahfidzActivity}] ` : ''}Surat ${row.tahfidzSurahName} (Juz ${row.tahfidzJuz}), Ayat ${row.tahfidzAyatRange}`}
                       </td>
                       <td className="px-4 py-2.5 font-bold text-[#008E75]">{row.grade}</td>
                       <td className="px-4 py-2.5 text-gray-500 max-w-xs truncate">{row.notes || '-'}</td>
@@ -988,7 +1033,7 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
             {/* Printable Content */}
             <div id="printable-rekap-area">
               <LetterheadKop
-                title={`REKAP PERKEMBANGAN TAHFIDZ & TAHSIN SISWA`}
+                title={`REKAP PERKEMBANGAN ${rekapJenis === 'tahsin' ? 'TAHSIN' : rekapJenis === 'tahfidz' ? 'TAHFIDZ' : 'TAHFIDZ & TAHSIN'} SISWA`}
                 subtitle={`Kelas: ${rekapClass === 'ALL' ? 'Semua Kelas' : rekapClass} | Periode: ${rekapMonth === 'ALL' ? 'Semua Bulan' : getMonthLabel(rekapMonth)} ${rekapYear}`}
               />
 
@@ -1020,7 +1065,7 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
                             ? (r.tahsinBook === "Al-Qur'an"
                                 ? `Al-Qur'an: Surat ${r.tahsinSurahName || '-'} (Ayat Terakhir: ${r.tahsinLastAyat || '-'})`
                                 : `${r.tahsinBook} Hal. ${r.tahsinPage}`)
-                            : `Surat ${r.tahfidzSurahName} (Ayat ${r.tahfidzAyatRange})`}
+                            : `${r.tahfidzActivity ? `[${r.tahfidzActivity}] ` : ''}Surat ${r.tahfidzSurahName} (Ayat ${r.tahfidzAyatRange})`}
                         </td>
                         <td className="border border-gray-300 px-2 py-1.5 font-bold">{r.grade}</td>
                         <td className="border border-gray-300 px-2 py-1.5">{r.notes || '-'}</td>

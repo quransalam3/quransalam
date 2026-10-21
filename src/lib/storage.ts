@@ -56,6 +56,7 @@ export function dbToRecord(row: any): MemorizationRecord {
     tahsinSurahNumber: row.tahsinSurahNumber ?? row.tahsin_surah_number ?? undefined,
     tahsinSurahName: row.tahsinSurahName || row.tahsin_surah_name || undefined,
     tahsinLastAyat: row.tahsinLastAyat || row.tahsin_last_ayat || undefined,
+    tahfidzActivity: row.tahfidzActivity || row.tahfidz_activity || undefined,
     tahfidzJuz: row.tahfidzJuz ?? row.tahfidz_juz ?? undefined,
     tahfidzSurahNumber: row.tahfidzSurahNumber ?? row.tahfidz_surah_number ?? undefined,
     tahfidzSurahName: row.tahfidzSurahName || row.tahfidz_surah_name || undefined,
@@ -81,6 +82,7 @@ export function recordToDb(r: MemorizationRecord): Record<string, any> {
     tahsin_surah_number: r.tahsinSurahNumber ?? null,
     tahsin_surah_name: r.tahsinSurahName || null,
     tahsin_last_ayat: r.tahsinLastAyat || null,
+    tahfidz_activity: r.tahfidzActivity || null,
     tahfidz_juz: r.tahfidzJuz ?? null,
     tahfidz_surah_number: r.tahfidzSurahNumber ?? null,
     tahfidz_surah_name: r.tahfidzSurahName || null,
@@ -981,10 +983,18 @@ class StorageManager {
     return true;
   }
 
-  // --- getRekapGuru(kelas, bulan, tahun) ---
-  public getRekapGuru(kelas: string, bulan: number | string, tahun: number | string): MemorizationRecord[] {
+  // --- getRekapGuru(kelas, bulan, tahun, jenis) ---
+  public getRekapGuru(
+    kelas: string,
+    bulan: number | string,
+    tahun: number | string,
+    jenis?: 'all' | 'tahsin' | 'tahfidz'
+  ): MemorizationRecord[] {
     return this.records.filter(r => {
       if (kelas && kelas !== 'ALL' && r.classId.toUpperCase() !== kelas.toUpperCase()) {
+        return false;
+      }
+      if (jenis && jenis !== 'all' && r.type !== jenis) {
         return false;
       }
       const recordDate = new Date(r.date);

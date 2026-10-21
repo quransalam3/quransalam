@@ -27,13 +27,14 @@ export const WaliDashboard: React.FC<WaliDashboardProps> = ({ currentUser }) => 
   const studentName = currentUser.studentName || 'Putra/Putri Anda';
   const classId = currentUser.classId || '1A';
 
-  // Filter state (Semua Riwayat, Dropdown Bulan, Dropdown Tahun)
+  // Filter state (Semua Riwayat, Dropdown Bulan, Dropdown Tahun, Pilihan Rekap Jenis)
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
   const defaultYear = Math.max(2025, currentYear);
   const [filterPeriodMode, setFilterPeriodMode] = useState<'semua' | 'custom'>('semua');
   const [filterMonth, setFilterMonth] = useState<number | string>(currentMonth);
   const [filterYear, setFilterYear] = useState<number | string>(defaultYear);
+  const [filterJenis, setFilterJenis] = useState<'all' | 'tahsin' | 'tahfidz'>('all');
   const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
 
   // Retrieve records for this student
@@ -42,8 +43,11 @@ export const WaliDashboard: React.FC<WaliDashboardProps> = ({ currentUser }) => 
     studentName: studentName
   });
 
-  // Apply period filter: semua riwayat, dropdown bulan, dropdown tahun
+  // Apply period and jenis filter: semua riwayat, dropdown bulan, dropdown tahun, pilihan rekapan
   const filteredRecords = allStudentRecords.filter((r) => {
+    if (filterJenis !== 'all' && r.type !== filterJenis) {
+      return false;
+    }
     if (filterPeriodMode === 'custom') {
       const recDate = new Date(r.date);
       const recMonth = recDate.getMonth() + 1; // 1-12
@@ -74,7 +78,7 @@ export const WaliDashboard: React.FC<WaliDashboardProps> = ({ currentUser }) => 
   const latestTahfidz = filteredRecords.find(r => r.type === 'tahfidz');
 
   const handleDownloadExcel = () => {
-    exportSingleStudentToExcel(filteredRecords, studentName, classId);
+    exportSingleStudentToExcel(filteredRecords, studentName, classId, filterJenis);
   };
 
   const handlePrint = () => {
@@ -154,13 +158,24 @@ export const WaliDashboard: React.FC<WaliDashboardProps> = ({ currentUser }) => 
         </div>
       </div>
 
-      {/* FILTER & ACTIONS BAR */}
+      {/* FILTER & ACTIONS BAR: "UNDUH REKAP BULANAN SISWA (WALI SISWA)" */}
       <div className="bg-white rounded-3xl p-6 shadow-md border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-bold text-[#3F4E5A] flex items-center gap-1.5 mr-1">
             <Filter className="w-4 h-4 text-[#00C2A0]" />
-            <span>Filter Periode:</span>
+            <span>Filter & Unduh Rekap:</span>
           </span>
+
+          {/* Dropdown Pilihan Rekap Tahsin atau Tahfidz */}
+          <select
+            value={filterJenis}
+            onChange={(e) => setFilterJenis(e.target.value as 'all' | 'tahsin' | 'tahfidz')}
+            className="py-2 px-3 rounded-xl text-xs font-bold bg-teal-50 border border-teal-300 text-[#008E75] focus:ring-2 focus:ring-[#00C2A0]"
+          >
+            <option value="all">Semua Rekapan (Tahsin & Tahfidz)</option>
+            <option value="tahsin">Khusus Rekapan Tahsin</option>
+            <option value="tahfidz">Khusus Rekapan Tahfidz</option>
+          </select>
 
           {/* Pilihan Semua Riwayat */}
           <button
@@ -283,7 +298,11 @@ export const WaliDashboard: React.FC<WaliDashboardProps> = ({ currentUser }) => 
                     </span>
                   </div>
 
-                  <span className="px-3 py-1 rounded-xl text-xs font-extrabold bg-[#00C2A0]/10 text-[#008E75] border border-[#00C2A0]/30 self-start sm:self-auto">
+                  <span className={`px-3 py-1 rounded-xl text-xs font-extrabold border self-start sm:self-auto ${
+                    item.grade === 'Mengulang'
+                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                      : 'bg-[#00C2A0]/10 text-[#008E75] border-[#00C2A0]/30'
+                  }`}>
                     {item.grade}
                   </span>
                 </div>
@@ -304,7 +323,8 @@ export const WaliDashboard: React.FC<WaliDashboardProps> = ({ currentUser }) => 
                       )
                     ) : (
                       <p className="text-sm font-bold text-gray-800">
-                        🌟 Surat {item.tahfidzSurahName} (Juz {item.tahfidzJuz}) &bull; <span className="text-[#00C2A0]">Ayat {item.tahfidzAyatRange}</span>
+                        🌟 {item.tahfidzActivity ? <span className="font-semibold text-emerald-700">[{item.tahfidzActivity}] </span> : null}
+                        Surat {item.tahfidzSurahName} (Juz {item.tahfidzJuz}) &bull; <span className="text-[#00C2A0]">Ayat {item.tahfidzAyatRange}</span>
                       </p>
                     )}
 
@@ -359,7 +379,7 @@ export const WaliDashboard: React.FC<WaliDashboardProps> = ({ currentUser }) => 
 
             <div>
               <LetterheadKop
-                title="LEMBAR HASIL CAPAIAN TAHFIDZ & TAHSIN SISWA"
+                title={`LEMBAR HASIL CAPAIAN ${filterJenis === 'tahsin' ? 'TAHSIN' : filterJenis === 'tahfidz' ? 'TAHFIDZ' : 'TAHFIDZ & TAHSIN'} SISWA`}
                 subtitle={`Nama Siswa: ${studentName} | Kelas: ${classId}`}
               />
 
@@ -402,9 +422,9 @@ export const WaliDashboard: React.FC<WaliDashboardProps> = ({ currentUser }) => 
                         <td className="border border-gray-300 px-2 py-1.5">
                           {r.type === 'tahsin'
                             ? (r.tahsinBook === "Al-Qur'an"
-                                ? `Tahsin: Al-Qur'an Surat ${r.tahsinSurahName || '-'} (Hal. ${r.tahsinPage || '-'}, Ayat: ${r.tahsinLastAyat || '-'})`
+                                ? `Tahsin: Al-Qur'an Surat ${r.tahsinSurahName || '-'} (Ayat: ${r.tahsinLastAyat || '-'})`
                                 : `Tahsin: ${r.tahsinBook} Hal. ${r.tahsinPage}`)
-                            : `Tahfidz: Surat ${r.tahfidzSurahName} (Juz ${r.tahfidzJuz}, Ayat ${r.tahfidzAyatRange})`}
+                            : `Tahfidz: ${r.tahfidzActivity ? `[${r.tahfidzActivity}] ` : ''}Surat ${r.tahfidzSurahName} (Juz ${r.tahfidzJuz}, Ayat ${r.tahfidzAyatRange})`}
                         </td>
                         <td className="border border-gray-300 px-2 py-1.5 text-center font-bold">{r.grade}</td>
                         <td className="border border-gray-300 px-2 py-1.5">{r.notes || '-'}</td>

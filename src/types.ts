@@ -1,8 +1,10 @@
 export type UserRole = 'guru' | 'wali' | 'admin';
 
-export type ScoreGrade = 'A (Mumtaz)' | 'A- (Jayyid Jiddan)' | 'B (Jayyid)';
+export type ScoreGrade = 'A (Mumtaz)' | 'A- (Jayyid Jiddan)' | 'B (Jayyid)' | 'Mengulang';
 
 export type MemorizationType = 'tahsin' | 'tahfidz';
+
+export type TahfidzActivity = 'Ziyadah (Tambahan)' | 'Murojaah (Mengulang)' | 'Evaluasi (Penilaian Hafalan)';
 
 export interface User {
   id: string;
@@ -60,6 +62,7 @@ export interface MemorizationRecord {
   tahsinSurahName?: string;
   tahsinLastAyat?: string;
   // Tahfidz
+  tahfidzActivity?: TahfidzActivity;
   tahfidzJuz?: number;
   tahfidzSurahNumber?: number;
   tahfidzSurahName?: string;

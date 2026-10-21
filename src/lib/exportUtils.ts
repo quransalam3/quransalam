@@ -26,10 +26,12 @@ export function exportRekapToExcel(
   records: MemorizationRecord[],
   kelas: string,
   bulan: number | string,
-  tahun: number | string
+  tahun: number | string,
+  jenisLabel: string = 'Semua'
 ) {
   const bulanText = bulan === 'ALL' ? 'Semua-Bulan' : getMonthLabel(bulan);
   const kelasText = kelas === 'ALL' ? 'Semua-Kelas' : `Kelas-${kelas}`;
+  const jenisText = jenisLabel === 'all' || jenisLabel === 'Semua' ? 'Lengkap' : jenisLabel === 'tahsin' ? 'Tahsin' : 'Tahfidz';
 
   const rows = records.map((r, index) => {
     let materi = '';
@@ -40,7 +42,8 @@ export function exportRekapToExcel(
         materi = `${r.tahsinBook || 'Yanfa\'una'} (Hal. ${r.tahsinPage || '-'})`;
       }
     } else {
-      materi = `Surat ${r.tahfidzSurahName || '-'} (Juz ${r.tahfidzJuz || '-'}, Ayat ${r.tahfidzAyatRange || '-'})`;
+      const actPrefix = r.tahfidzActivity ? `[${r.tahfidzActivity}] ` : '';
+      materi = `${actPrefix}Surat ${r.tahfidzSurahName || '-'} (Juz ${r.tahfidzJuz || '-'}, Ayat ${r.tahfidzAyatRange || '-'})`;
     }
 
     return {
@@ -65,7 +68,7 @@ export function exportRekapToExcel(
     { wch: 8 },  // Kelas
     { wch: 32 }, // Nama Siswa
     { wch: 18 }, // Jenis
-    { wch: 35 }, // Materi
+    { wch: 42 }, // Materi
     { wch: 20 }, // Penilaian
     { wch: 30 }, // Catatan
     { wch: 28 }, // Guru
@@ -75,15 +78,17 @@ export function exportRekapToExcel(
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Rekap Capaian');
 
   // Generate filename
-  const fileName = `Rekap_SALAM_Quran_${kelasText}_${bulanText}_${tahun}.xlsx`;
+  const fileName = `Rekap_SALAM_Quran_${jenisText}_${kelasText}_${bulanText}_${tahun}.xlsx`;
   XLSX.writeFile(workbook, fileName);
 }
 
 export function exportSingleStudentToExcel(
   records: MemorizationRecord[],
   studentName: string,
-  classId: string
+  classId: string,
+  jenisLabel: string = 'Semua'
 ) {
+  const jenisText = jenisLabel === 'all' || jenisLabel === 'Semua' ? 'Lengkap' : jenisLabel === 'tahsin' ? 'Tahsin' : 'Tahfidz';
   const rows = records.map((r, index) => {
     let materi = '';
     if (r.type === 'tahsin') {
@@ -93,7 +98,8 @@ export function exportSingleStudentToExcel(
         materi = `${r.tahsinBook || 'Yanfa\'una'} (Hal. ${r.tahsinPage || '-'})`;
       }
     } else {
-      materi = `Surat ${r.tahfidzSurahName || '-'} (Juz ${r.tahfidzJuz || '-'}, Ayat ${r.tahfidzAyatRange || '-'})`;
+      const actPrefix = r.tahfidzActivity ? `[${r.tahfidzActivity}] ` : '';
+      materi = `${actPrefix}Surat ${r.tahfidzSurahName || '-'} (Juz ${r.tahfidzJuz || '-'}, Ayat ${r.tahfidzAyatRange || '-'})`;
     }
 
     return {
@@ -112,7 +118,7 @@ export function exportSingleStudentToExcel(
     { wch: 5 },
     { wch: 14 },
     { wch: 14 },
-    { wch: 35 },
+    { wch: 42 },
     { wch: 20 },
     { wch: 35 },
     { wch: 28 },
@@ -122,6 +128,6 @@ export function exportSingleStudentToExcel(
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Laporan Hafalan');
 
   const cleanName = studentName.replace(/[^a-zA-Z0-9]/g, '_');
-  const fileName = `Laporan_Hafalan_${cleanName}_Kelas_${classId}.xlsx`;
+  const fileName = `Laporan_Hafalan_${jenisText}_${cleanName}_Kelas_${classId}.xlsx`;
   XLSX.writeFile(workbook, fileName);
 }

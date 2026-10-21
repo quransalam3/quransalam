@@ -93,6 +93,8 @@ CREATE TABLE IF NOT EXISTS memorization_records (
   "tahsinSurahName" TEXT,
   tahsin_last_ayat TEXT,
   "tahsinLastAyat" TEXT,
+  tahfidz_activity TEXT,
+  "tahfidzActivity" TEXT,
   tahfidz_juz INTEGER,
   "tahfidzJuz" INTEGER,
   tahfidz_surah_number INTEGER,
@@ -158,6 +160,9 @@ BEGIN
     IF NEW.tahsin_last_ayat IS DISTINCT FROM OLD.tahsin_last_ayat THEN NEW."tahsinLastAyat" := NEW.tahsin_last_ayat;
     ELSIF NEW."tahsinLastAyat" IS DISTINCT FROM OLD."tahsinLastAyat" THEN NEW.tahsin_last_ayat := NEW."tahsinLastAyat"; END IF;
 
+    IF NEW.tahfidz_activity IS DISTINCT FROM OLD.tahfidz_activity THEN NEW."tahfidzActivity" := NEW.tahfidz_activity;
+    ELSIF NEW."tahfidzActivity" IS DISTINCT FROM OLD."tahfidzActivity" THEN NEW.tahfidz_activity := NEW."tahfidzActivity"; END IF;
+
     IF NEW.tahfidz_juz IS DISTINCT FROM OLD.tahfidz_juz THEN NEW."tahfidzJuz" := NEW.tahfidz_juz;
     ELSIF NEW."tahfidzJuz" IS DISTINCT FROM OLD."tahfidzJuz" THEN NEW.tahfidz_juz := NEW."tahfidzJuz"; END IF;
 
@@ -202,6 +207,9 @@ BEGIN
 
     IF NEW.tahsin_last_ayat IS NOT NULL AND NEW."tahsinLastAyat" IS NULL THEN NEW."tahsinLastAyat" := NEW.tahsin_last_ayat;
     ELSIF NEW."tahsinLastAyat" IS NOT NULL AND NEW.tahsin_last_ayat IS NULL THEN NEW.tahsin_last_ayat := NEW."tahsinLastAyat"; END IF;
+
+    IF NEW.tahfidz_activity IS NOT NULL AND NEW."tahfidzActivity" IS NULL THEN NEW."tahfidzActivity" := NEW.tahfidz_activity;
+    ELSIF NEW."tahfidzActivity" IS NOT NULL AND NEW.tahfidz_activity IS NULL THEN NEW.tahfidz_activity := NEW."tahfidzActivity"; END IF;
 
     IF NEW.tahfidz_juz IS NOT NULL AND NEW."tahfidzJuz" IS NULL THEN NEW."tahfidzJuz" := NEW.tahfidz_juz;
     ELSIF NEW."tahfidzJuz" IS NOT NULL AND NEW.tahfidz_juz IS NULL THEN NEW.tahfidz_juz := NEW."tahfidzJuz"; END IF;
@@ -535,15 +543,16 @@ END $$;
         const tSurahNum = r.tahsinSurahNumber ? r.tahsinSurahNumber : 'NULL';
         const tSurahName = r.tahsinSurahName ? `'${escapeSql(r.tahsinSurahName)}'` : 'NULL';
         const tLastAyat = r.tahsinLastAyat ? `'${escapeSql(r.tahsinLastAyat)}'` : 'NULL';
+        const hAct = r.tahfidzActivity ? `'${escapeSql(r.tahfidzActivity)}'` : 'NULL';
         const hJuz = r.tahfidzJuz ? r.tahfidzJuz : 'NULL';
         const hSurahNum = r.tahfidzSurahNumber ? r.tahfidzSurahNumber : 'NULL';
         const hSurahName = r.tahfidzSurahName ? `'${escapeSql(r.tahfidzSurahName)}'` : 'NULL';
         const hAyatRange = r.tahfidzAyatRange ? `'${escapeSql(r.tahfidzAyatRange)}'` : 'NULL';
         const notes = r.notes ? `'${escapeSql(r.notes)}'` : 'NULL';
 
-        return `('${escapeSql(r.id)}', '${r.date}', '${escapeSql(r.classId)}', '${escapeSql(r.classId)}', '${escapeSql(r.studentId)}', '${escapeSql(r.studentId)}', '${escapeSql(r.studentName)}', '${escapeSql(r.studentName)}', '${escapeSql(r.teacherId)}', '${escapeSql(r.teacherId)}', '${escapeSql(r.teacherName)}', '${escapeSql(r.teacherName)}', '${r.type}', ${tBook}, ${tBook}, ${tPage}, ${tPage}, ${tSurahNum}, ${tSurahNum}, ${tSurahName}, ${tSurahName}, ${tLastAyat}, ${tLastAyat}, ${hJuz}, ${hJuz}, ${hSurahNum}, ${hSurahNum}, ${hSurahName}, ${hSurahName}, ${hAyatRange}, ${hAyatRange}, '${escapeSql(r.grade)}', ${notes}, '${r.createdAt}', '${r.createdAt}')`;
+        return `('${escapeSql(r.id)}', '${r.date}', '${escapeSql(r.classId)}', '${escapeSql(r.classId)}', '${escapeSql(r.studentId)}', '${escapeSql(r.studentId)}', '${escapeSql(r.studentName)}', '${escapeSql(r.studentName)}', '${escapeSql(r.teacherId)}', '${escapeSql(r.teacherId)}', '${escapeSql(r.teacherName)}', '${escapeSql(r.teacherName)}', '${r.type}', ${tBook}, ${tBook}, ${tPage}, ${tPage}, ${tSurahNum}, ${tSurahNum}, ${tSurahName}, ${tSurahName}, ${tLastAyat}, ${tLastAyat}, ${hAct}, ${hAct}, ${hJuz}, ${hJuz}, ${hSurahNum}, ${hSurahNum}, ${hSurahName}, ${hSurahName}, ${hAyatRange}, ${hAyatRange}, '${escapeSql(r.grade)}', ${notes}, '${r.createdAt}', '${r.createdAt}')`;
       }).join(',\n');
-      parts.push(`INSERT INTO memorization_records (id, date, class_id, "classId", student_id, "studentId", student_name, "studentName", teacher_id, "teacherId", teacher_name, "teacherName", type, tahsin_book, "tahsinBook", tahsin_page, "tahsinPage", tahsin_surah_number, "tahsinSurahNumber", tahsin_surah_name, "tahsinSurahName", tahsin_last_ayat, "tahsinLastAyat", tahfidz_juz, "tahfidzJuz", tahfidz_surah_number, "tahfidzSurahNumber", tahfidz_surah_name, "tahfidzSurahName", tahfidz_ayat_range, "tahfidzAyatRange", grade, notes, created_at, "createdAt") VALUES\n${recordRows}\nON CONFLICT (id) DO NOTHING;\n`);
+      parts.push(`INSERT INTO memorization_records (id, date, class_id, "classId", student_id, "studentId", student_name, "studentName", teacher_id, "teacherId", teacher_name, "teacherName", type, tahsin_book, "tahsinBook", tahsin_page, "tahsinPage", tahsin_surah_number, "tahsinSurahNumber", tahsin_surah_name, "tahsinSurahName", tahsin_last_ayat, "tahsinLastAyat", tahfidz_activity, "tahfidzActivity", tahfidz_juz, "tahfidzJuz", tahfidz_surah_number, "tahfidzSurahNumber", tahfidz_surah_name, "tahfidzSurahName", tahfidz_ayat_range, "tahfidzAyatRange", grade, notes, created_at, "createdAt") VALUES\n${recordRows}\nON CONFLICT (id) DO NOTHING;\n`);
     }
   }
 
