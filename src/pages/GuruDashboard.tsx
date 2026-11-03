@@ -31,7 +31,9 @@ import {
   BookMarked,
   CloudUpload,
   ExternalLink,
-  Check
+  Check,
+  Pencil,
+  X
 } from 'lucide-react';
 
 interface GuruDashboardProps {
@@ -76,6 +78,28 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
   const [filterPeriodMonth, setFilterPeriodMonth] = useState<number | string>(currentMonth);
   const [filterPeriodYear, setFilterPeriodYear] = useState<number | string>(defaultYear);
 
+  // Filter Kelas & Filter Guru untuk Preview & Riwayat Input
+  const [filterClass, setFilterClass] = useState<string>('ALL');
+  const [filterTeacher, setFilterTeacher] = useState<string>('ALL');
+
+  // Edit Record Modal state
+  const [editingRecord, setEditingRecord] = useState<MemorizationRecord | null>(null);
+  const [editDate, setEditDate] = useState<string>('');
+  const [editClassId, setEditClassId] = useState<string>('1A');
+  const [editStudentId, setEditStudentId] = useState<string>('');
+  const [editStudentName, setEditStudentName] = useState<string>('');
+  const [editType, setEditType] = useState<MemorizationType>('tahsin');
+  const [editTahsinBook, setEditTahsinBook] = useState<string>(YANFAUNA_BOOKS[0]);
+  const [editTahsinPage, setEditTahsinPage] = useState<string>('1');
+  const [editTahsinSurahNumber, setEditTahsinSurahNumber] = useState<number>(1);
+  const [editTahsinLastAyat, setEditTahsinLastAyat] = useState<string>('');
+  const [editTahfidzActivity, setEditTahfidzActivity] = useState<TahfidzActivity>('Ziyadah (Tambahan)');
+  const [editTahfidzJuz, setEditTahfidzJuz] = useState<number>(30);
+  const [editTahfidzSurahNumber, setEditTahfidzSurahNumber] = useState<number>(78);
+  const [editTahfidzAyatRange, setEditTahfidzAyatRange] = useState<string>('1 - 10');
+  const [editGrade, setEditGrade] = useState<ScoreGrade>('A (Mumtaz)');
+  const [editNotes, setEditNotes] = useState<string>('');
+
   // Recap Filter Card State (UNDUH REKAP BULANAN SISWA GURU)
   const [rekapClass, setRekapClass] = useState<string>('1A');
   const [rekapMonth, setRekapMonth] = useState<number | string>(currentMonth);
@@ -85,7 +109,9 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
 
   // Dynamic lists from storage
   const classes = storage.getClasses();
+  const teachers = storage.getTeachers();
   const students = storage.getStudents(selectedClass);
+  const editStudentsInClass = storage.getStudents(editClassId);
 
   // Handle class change -> auto pick first student
   const handleClassChange = (newClass: string) => {
@@ -181,7 +207,7 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
     }
   };
 
-  // Records filtering based on Filter Periode (Semua Riwayat vs Dropdown Bulan & Tahun)
+  // Records filtering based on Filter Periode (Semua Riwayat vs Dropdown Bulan & Tahun), Filter Kelas, and Filter Guru
   const displayedRecords = allRecords.filter(r => {
     if (filterPeriodMode === 'custom') {
       const recDate = new Date(r.date);
@@ -196,10 +222,96 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
       }
     }
 
+    if (filterClass !== 'ALL' && r.classId.toUpperCase() !== filterClass.toUpperCase()) {
+      return false;
+    }
+
+    if (filterTeacher !== 'ALL' && r.teacherName !== filterTeacher && r.teacherId !== filterTeacher) {
+      return false;
+    }
+
     if (!searchTerm) return true;
     const q = searchTerm.toLowerCase();
-    return r.studentName.toLowerCase().includes(q) || r.classId.toLowerCase().includes(q);
+    return r.studentName.toLowerCase().includes(q) || r.classId.toLowerCase().includes(q) || r.teacherName.toLowerCase().includes(q);
   });
+
+  // Handle Open Edit Modal
+  const handleOpenEditModal = (rec: MemorizationRecord) => {
+    setEditingRecord(rec);
+    setEditDate(rec.date);
+    setEditClassId(rec.classId);
+    setEditStudentId(rec.studentId);
+    setEditStudentName(rec.studentName);
+    setEditType(rec.type);
+    setEditTahsinBook(rec.tahsinBook || YANFAUNA_BOOKS[0]);
+    setEditTahsinPage(rec.tahsinPage || '1');
+    setEditTahsinSurahNumber(rec.tahsinSurahNumber || 1);
+    setEditTahsinLastAyat(rec.tahsinLastAyat || '');
+    setEditTahfidzActivity(rec.tahfidzActivity || 'Ziyadah (Tambahan)');
+    setEditTahfidzJuz(rec.tahfidzJuz || 30);
+    setEditTahfidzSurahNumber(rec.tahfidzSurahNumber || 78);
+    setEditTahfidzAyatRange(rec.tahfidzAyatRange || '1 - 10');
+    setEditGrade(rec.grade);
+    setEditNotes(rec.notes || '');
+  };
+
+  const handleEditClassChange = (newClass: string) => {
+    setEditClassId(newClass);
+    const inClass = storage.getStudents(newClass);
+    if (inClass.length > 0) {
+      setEditStudentId(inClass[0].id);
+      setEditStudentName(inClass[0].name);
+    } else {
+      setEditStudentId('');
+      setEditStudentName('');
+    }
+  };
+
+  const handleEditStudentChange = (stId: string) => {
+    setEditStudentId(stId);
+    const found = editStudentsInClass.find(s => s.id === stId);
+    if (found) {
+      setEditStudentName(found.name);
+    }
+  };
+
+  const handleEditSurahChange = (surahNum: number) => {
+    setEditTahfidzSurahNumber(surahNum);
+    const found = QURAN_SURAHS.find(s => s.number === surahNum);
+    if (found) {
+      setEditTahfidzJuz(found.juzStart);
+    }
+  };
+
+  const handleSaveEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingRecord) return;
+
+    const selectedTahfidzSurah = QURAN_SURAHS.find(s => s.number === editTahfidzSurahNumber);
+    const selectedTahsinSurah = QURAN_SURAHS.find(s => s.number === editTahsinSurahNumber);
+
+    storage.updateRecord(editingRecord.id, {
+      date: editDate,
+      classId: editClassId,
+      studentId: editStudentId,
+      studentName: editStudentName,
+      type: editType,
+      tahsinBook: editType === 'tahsin' ? editTahsinBook : undefined,
+      tahsinPage: editType === 'tahsin' && editTahsinBook !== "Al-Qur'an" ? editTahsinPage : undefined,
+      tahsinSurahNumber: editType === 'tahsin' && editTahsinBook === "Al-Qur'an" ? Number(editTahsinSurahNumber) : undefined,
+      tahsinSurahName: editType === 'tahsin' && editTahsinBook === "Al-Qur'an" ? (selectedTahsinSurah?.name || `Surat ke-${editTahsinSurahNumber}`) : undefined,
+      tahsinLastAyat: editType === 'tahsin' && editTahsinBook === "Al-Qur'an" ? editTahsinLastAyat : undefined,
+      tahfidzActivity: editType === 'tahfidz' ? editTahfidzActivity : undefined,
+      tahfidzJuz: editType === 'tahfidz' ? Number(editTahfidzJuz) : undefined,
+      tahfidzSurahNumber: editType === 'tahfidz' ? Number(editTahfidzSurahNumber) : undefined,
+      tahfidzSurahName: editType === 'tahfidz' ? (selectedTahfidzSurah?.name || `Surat ke-${editTahfidzSurahNumber}`) : undefined,
+      tahfidzAyatRange: editType === 'tahfidz' ? editTahfidzAyatRange : undefined,
+      grade: editGrade,
+      notes: editNotes
+    }, currentUser.name);
+
+    setEditingRecord(null);
+  };
 
   // Handle Submit Form
   const handleSubmit = (e: React.FormEvent) => {
@@ -627,20 +739,23 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
             </p>
           </div>
 
-          {/* FILTER PERIODE: Pilihan Semua Riwayat, Dropdown Bulan, dan Dropdown Tahun */}
-          <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-200 mb-4 space-y-2">
+          {/* FILTER PERIODE, FILTER KELAS, & FILTER GURU */}
+          <div className="p-3.5 rounded-2xl bg-gray-50 border border-gray-200 mb-4 space-y-2.5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-[#3F4E5A] flex items-center gap-1.5">
                 <Filter className="w-3.5 h-3.5 text-[#00C2A0]" />
-                <span>Filter Periode:</span>
+                <span>Filter Riwayat:</span>
               </span>
-              <span className="text-[11px] font-semibold text-[#008E75]">
+              <span className="text-[11px] font-semibold text-[#008E75] text-right truncate max-w-[220px]">
                 {filterPeriodMode === 'semua'
-                  ? 'Menampilkan Semua Riwayat'
+                  ? 'Semua Periode'
                   : `${filterPeriodMonth === 'ALL' ? 'Semua Bulan' : MONTH_NAMES[Number(filterPeriodMonth) - 1]} ${filterPeriodYear}`}
+                {filterClass !== 'ALL' && ` • Kelas ${filterClass}`}
+                {filterTeacher !== 'ALL' && ` • ${filterTeacher.split(' ')[0]}`}
               </span>
             </div>
 
+            {/* Row 1: Filter Periode (Semua, Bulan, Tahun) */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {/* Pilihan Semua Riwayat */}
               <button
@@ -687,6 +802,41 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
                 ))}
               </select>
             </div>
+
+            {/* Row 2: Filter Kelas & Filter Guru */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-gray-200/60">
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-500 mb-1">
+                  Filter Kelas:
+                </label>
+                <select
+                  value={filterClass}
+                  onChange={(e) => setFilterClass(e.target.value)}
+                  className="w-full py-2 px-2.5 rounded-xl text-xs font-semibold bg-white border border-gray-200 text-gray-700 focus:ring-2 focus:ring-[#00C2A0]"
+                >
+                  <option value="ALL">Semua Kelas</option>
+                  {classes.map((cls) => (
+                    <option key={cls} value={cls}>Kelas {cls}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-gray-500 mb-1">
+                  Filter Guru Pengampu:
+                </label>
+                <select
+                  value={filterTeacher}
+                  onChange={(e) => setFilterTeacher(e.target.value)}
+                  className="w-full py-2 px-2.5 rounded-xl text-xs font-semibold bg-white border border-gray-200 text-gray-700 focus:ring-2 focus:ring-[#00C2A0]"
+                >
+                  <option value="ALL">Semua Guru Pengampu</option>
+                  {teachers.map((t) => (
+                    <option key={t.id} value={t.name}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
 
           {/* Search filter within preview */}
@@ -696,7 +846,7 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Cari nama siswa atau kelas..."
+              placeholder="Cari nama siswa, kelas, atau guru..."
               className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#00C2A0]"
             />
           </div>
@@ -707,10 +857,10 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
               <div className="text-center py-12 text-gray-400">
                 <BookOpen className="w-12 h-12 mx-auto mb-2 text-gray-300 stroke-1" />
                 <p className="text-sm font-semibold text-gray-500">
-                  Belum ada data rekaman pada periode ini
+                  Belum ada data rekaman pada filter ini
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
-                  Gunakan form di samping untuk menginput capaian siswa.
+                  Sesuaikan filter atau gunakan form di samping untuk menginput capaian siswa.
                 </p>
               </div>
             ) : (
@@ -779,13 +929,24 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
                       }`}>
                         {rec.grade}
                       </span>
-                      <button
-                        onClick={() => handleDeleteRecord(rec.id)}
-                        className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition cursor-pointer"
-                        title="Hapus rekaman ini"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-gray-400 hover:text-gray-600" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditModal(rec)}
+                          className="text-gray-400 hover:text-[#00C2A0] p-1.5 rounded-lg hover:bg-teal-50 transition cursor-pointer"
+                          title="Edit rekaman ini"
+                        >
+                          <Pencil className="w-3.5 h-3.5 text-gray-400 hover:text-[#00C2A0]" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteRecord(rec.id)}
+                          className="text-gray-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition cursor-pointer"
+                          title="Hapus rekaman ini"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-gray-400 hover:text-red-500" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1095,6 +1256,296 @@ export const GuruDashboard: React.FC<GuruDashboardProps> = ({ currentUser }) => 
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDIT DATA SETORAN */}
+      {editingRecord && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100">
+            <div className="flex justify-between items-center pb-4 mb-4 border-b border-gray-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-teal-50 text-[#00C2A0] flex items-center justify-center border border-teal-100">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#3F4E5A]">Edit Riwayat Capaian Siswa</h3>
+                  <p className="text-xs text-gray-400">Perbarui data hafalan santri yang telah tersimpan</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingRecord(null)}
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-100 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              {/* Tanggal & Kelas */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-[#3F4E5A] mb-1">
+                    Tanggal Setoran
+                  </label>
+                  <input
+                    type="date"
+                    value={editDate}
+                    onChange={(e) => setEditDate(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs focus:ring-2 focus:ring-[#00C2A0]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#3F4E5A] mb-1">
+                    Kelas
+                  </label>
+                  <select
+                    value={editClassId}
+                    onChange={(e) => handleEditClassChange(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold bg-white focus:ring-2 focus:ring-[#00C2A0]"
+                  >
+                    {classes.map((cls) => (
+                      <option key={cls} value={cls}>Kelas {cls}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Santri */}
+              <div>
+                <label className="block text-xs font-bold text-[#3F4E5A] mb-1">
+                  Nama Santri
+                </label>
+                <select
+                  value={editStudentId}
+                  onChange={(e) => handleEditStudentChange(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold bg-white focus:ring-2 focus:ring-[#00C2A0]"
+                >
+                  {editStudentsInClass.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Jenis Pembelajaran Toggle */}
+              <div>
+                <label className="block text-xs font-bold text-[#3F4E5A] mb-1">
+                  Jenis Pembelajaran
+                </label>
+                <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setEditType('tahsin')}
+                    className={`py-2 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                      editType === 'tahsin'
+                        ? 'bg-white text-[#00C2A0] shadow-xs'
+                        : 'text-gray-500 hover:text-gray-800'
+                    }`}
+                  >
+                    <BookOpen className="w-3.5 h-3.5" />
+                    <span>Tahsin</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditType('tahfidz')}
+                    className={`py-2 rounded-lg text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                      editType === 'tahfidz'
+                        ? 'bg-white text-[#00C2A0] shadow-xs'
+                        : 'text-gray-500 hover:text-gray-800'
+                    }`}
+                  >
+                    <Bookmark className="w-3.5 h-3.5" />
+                    <span>Tahfidz</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Tahsin Fields */}
+              {editType === 'tahsin' && (
+                <div className="p-3.5 bg-teal-50/50 rounded-2xl border border-teal-100 space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Pilihan Buku
+                    </label>
+                    <select
+                      value={editTahsinBook}
+                      onChange={(e) => setEditTahsinBook(e.target.value)}
+                      className="w-full px-3 py-2 bg-white rounded-xl border border-gray-200 text-xs font-medium focus:ring-2 focus:ring-[#00C2A0]"
+                    >
+                      {YANFAUNA_BOOKS.map((b) => (
+                        <option key={b} value={b}>{b}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {editTahsinBook !== "Al-Qur'an" ? (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        Halaman
+                      </label>
+                      <input
+                        type="text"
+                        value={editTahsinPage}
+                        onChange={(e) => setEditTahsinPage(e.target.value)}
+                        placeholder="Contoh: 12 atau 12-14"
+                        className="w-full px-3 py-2 bg-white rounded-xl border border-gray-200 text-xs focus:ring-2 focus:ring-[#00C2A0]"
+                      />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Surat dalam Al-Qur'an
+                        </label>
+                        <select
+                          value={editTahsinSurahNumber}
+                          onChange={(e) => setEditTahsinSurahNumber(Number(e.target.value))}
+                          className="w-full px-3 py-2 bg-white rounded-xl border border-gray-200 text-xs focus:ring-2 focus:ring-[#00C2A0]"
+                        >
+                          {QURAN_SURAHS.map((surah) => (
+                            <option key={surah.number} value={surah.number}>
+                              {surah.number}. {surah.name} ({surah.totalAyat} ayat)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Ayat Terakhir yang Dibaca
+                        </label>
+                        <input
+                          type="text"
+                          value={editTahsinLastAyat}
+                          onChange={(e) => setEditTahsinLastAyat(e.target.value)}
+                          placeholder="Contoh: Ayat 45 atau 1-20"
+                          className="w-full px-3 py-2 bg-white rounded-xl border border-gray-200 text-xs focus:ring-2 focus:ring-[#00C2A0]"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Tahfidz Fields */}
+              {editType === 'tahfidz' && (
+                <div className="p-3.5 bg-teal-50/50 rounded-2xl border border-teal-100 space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Aktifitas Pembelajaran
+                    </label>
+                    <select
+                      value={editTahfidzActivity}
+                      onChange={(e) => setEditTahfidzActivity(e.target.value as TahfidzActivity)}
+                      className="w-full px-3 py-2 bg-white rounded-xl border border-gray-200 text-xs font-medium focus:ring-2 focus:ring-[#00C2A0]"
+                    >
+                      <option value="Ziyadah (Tambahan)">Ziyadah (Tambahan)</option>
+                      <option value="Murojaah (Mengulang)">Murojaah (Mengulang)</option>
+                      <option value="Evaluasi (Penilaian Hafalan)">Evaluasi (Penilaian Hafalan)</option>
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        Juz 1-30
+                      </label>
+                      <select
+                        value={editTahfidzJuz}
+                        onChange={(e) => setEditTahfidzJuz(Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-white rounded-xl border border-gray-200 text-xs font-medium focus:ring-2 focus:ring-[#00C2A0]"
+                      >
+                        {Array.from({ length: 30 }, (_, i) => i + 1).map((juz) => (
+                          <option key={juz} value={juz}>Juz {juz}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        Surat
+                      </label>
+                      <select
+                        value={editTahfidzSurahNumber}
+                        onChange={(e) => handleEditSurahChange(Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-white rounded-xl border border-gray-200 text-xs font-medium focus:ring-2 focus:ring-[#00C2A0]"
+                      >
+                        {QURAN_SURAHS.map((surah) => (
+                          <option key={surah.number} value={surah.number}>
+                            {surah.number}. {surah.name} ({surah.totalAyat} ayat)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Rentang Ayat
+                    </label>
+                    <input
+                      type="text"
+                      value={editTahfidzAyatRange}
+                      onChange={(e) => setEditTahfidzAyatRange(e.target.value)}
+                      placeholder="Contoh: 1 - 10"
+                      className="w-full px-3 py-2 bg-white rounded-xl border border-gray-200 text-xs focus:ring-2 focus:ring-[#00C2A0]"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Nilai */}
+              <div>
+                <label className="block text-xs font-bold text-[#3F4E5A] mb-1">
+                  Penilaian
+                </label>
+                <select
+                  value={editGrade}
+                  onChange={(e) => setEditGrade(e.target.value as ScoreGrade)}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs font-bold bg-white focus:ring-2 focus:ring-[#00C2A0]"
+                >
+                  <option value="A (Mumtaz)">A (Mumtaz)</option>
+                  <option value="A- (Jayyid Jiddan)">A- (Jayyid Jiddan)</option>
+                  <option value="B (Jayyid)">B (Jayyid)</option>
+                  <option value="Mengulang">Mengulang</option>
+                </select>
+              </div>
+
+              {/* Catatan */}
+              <div>
+                <label className="block text-xs font-bold text-[#3F4E5A] mb-1">
+                  Catatan Guru
+                </label>
+                <textarea
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  rows={2}
+                  placeholder="Catatan makhraj, kelancaran tajwid, dll..."
+                  className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs focus:ring-2 focus:ring-[#00C2A0]"
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingRecord(null)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-[#00C2A0] hover:bg-[#009e82] transition shadow-md cursor-pointer flex items-center gap-1.5"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Simpan Perubahan</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

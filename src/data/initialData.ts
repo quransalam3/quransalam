@@ -31,6 +31,7 @@ export const INITIAL_TEACHERS: Teacher[] = [
 ];
 
 export const YANFAUNA_BOOKS = [
+  "Yanfa'una Jilid Pemula",
   "Yanfa'una Jilid 1",
   "Yanfa'una Jilid 2",
   "Yanfa'una Jilid 3",

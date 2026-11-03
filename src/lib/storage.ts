@@ -983,6 +983,31 @@ class StorageManager {
     return true;
   }
 
+  public updateRecord(id: string, updatedData: Partial<MemorizationRecord>, userName: string): boolean {
+    const index = this.records.findIndex(r => r.id === id);
+    if (index === -1) return false;
+    const old = this.records[index];
+    const updated: MemorizationRecord = {
+      ...old,
+      ...updatedData,
+      id,
+      updatedAt: new Date().toISOString()
+    };
+    this.records[index] = updated;
+    this.saveAll();
+    this.notify();
+    this.addLog('EDIT_SETORAN', userName, updated.studentName, `Memperbarui setoran ${updated.type} tanggal ${updated.date} untuk ${updated.studentName}`);
+
+    if (supabase) {
+      Promise.resolve(
+        supabase.from('memorization_records').update(recordToDb(updated)).eq('id', id)
+      ).catch((err: unknown) => {
+        console.warn('Supabase update record error:', err);
+      });
+    }
+    return true;
+  }
+
   // --- getRekapGuru(kelas, bulan, tahun, jenis) ---
   public getRekapGuru(
     kelas: string,

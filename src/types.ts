@@ -84,6 +84,7 @@ export type ActionType =
   | 'RESET_PASSWORD'
   | 'UBAH_PASSWORD'
   | 'TAMBAH_SETORAN'
+  | 'EDIT_SETORAN'
   | 'HAPUS_SETORAN';
 
 export interface ActivityLog {
