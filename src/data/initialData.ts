@@ -700,4 +700,21 @@ export const INITIAL_RECORDS: MemorizationRecord[] = [];
 
 export const INITIAL_LOGS: ActivityLog[] = [];
 
+// Pilihan Juz yang diizinkan untuk Tahfidz (5 Juz)
+export const TAHFIDZ_ALLOWED_JUZ = [1, 2, 28, 29, 30] as const;
+
+// Pemetaan nomor surat untuk setiap juz yang diizinkan
+export const TAHFIDZ_JUZ_SURAH_MAP: Record<number, number[]> = {
+  1: [1, 2], // Al-Fatihah, Al-Baqarah
+  2: [2],    // Al-Baqarah
+  28: [58, 59, 60, 61, 62, 63, 64, 65, 66], // Al-Mujadilah s.d. At-Tahrim
+  29: [67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77], // Al-Mulk s.d. Al-Mursalat
+  30: [
+    78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90,
+    91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103,
+    104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114
+  ] // An-Naba' s.d. An-Nas
+};
+
+
 

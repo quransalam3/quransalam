@@ -1,6 +1,18 @@
 export type UserRole = 'guru' | 'wali' | 'admin';
 
-export type ScoreGrade = 'A (Mumtaz)' | 'A- (Jayyid Jiddan)' | 'B (Jayyid)' | 'Mengulang';
+export type ScoreGrade = 
+  | 'Lanjut'
+  | 'Ulangi'
+  | 'Lancar'
+  | 'Kurang Lancar'
+  | 'Belum Lancar'
+  | 'A (Mumtaz)'
+  | 'A- (Jayyid Jiddan)'
+  | 'B (Baik)'
+  | 'B (Jayyid)'
+  | 'C (Maqbul)'
+  | 'Mengulang'
+  | string;
 
 export type MemorizationType = 'tahsin' | 'tahfidz';
 
@@ -67,6 +79,13 @@ export interface MemorizationRecord {
   tahfidzSurahNumber?: number;
   tahfidzSurahName?: string;
   tahfidzAyatRange?: string;
+  // Tahfidz From - To
+  tahfidzSurahFromNumber?: number;
+  tahfidzSurahFromName?: string;
+  tahfidzAyatFrom?: string;
+  tahfidzSurahToNumber?: number;
+  tahfidzSurahToName?: string;
+  tahfidzAyatTo?: string;
   // Evaluation
   grade: ScoreGrade;
   notes: string;

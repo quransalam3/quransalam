@@ -61,7 +61,13 @@ export function dbToRecord(row: any): MemorizationRecord {
     tahfidzSurahNumber: row.tahfidzSurahNumber ?? row.tahfidz_surah_number ?? undefined,
     tahfidzSurahName: row.tahfidzSurahName || row.tahfidz_surah_name || undefined,
     tahfidzAyatRange: row.tahfidzAyatRange || row.tahfidz_ayat_range || undefined,
-    grade: row.grade || 'A (Mumtaz)',
+    tahfidzSurahFromNumber: row.tahfidzSurahFromNumber ?? row.tahfidz_surah_from_number ?? undefined,
+    tahfidzSurahFromName: row.tahfidzSurahFromName || row.tahfidz_surah_from_name || undefined,
+    tahfidzAyatFrom: row.tahfidzAyatFrom || row.tahfidz_ayat_from || undefined,
+    tahfidzSurahToNumber: row.tahfidzSurahToNumber ?? row.tahfidz_surah_to_number ?? undefined,
+    tahfidzSurahToName: row.tahfidzSurahToName || row.tahfidz_surah_to_name || undefined,
+    tahfidzAyatTo: row.tahfidzAyatTo || row.tahfidz_ayat_to || undefined,
+    grade: row.grade || 'Lanjut',
     notes: row.notes || '',
     createdAt: row.createdAt || row.created_at || new Date().toISOString()
   };
@@ -87,6 +93,12 @@ export function recordToDb(r: MemorizationRecord): Record<string, any> {
     tahfidz_surah_number: r.tahfidzSurahNumber ?? null,
     tahfidz_surah_name: r.tahfidzSurahName || null,
     tahfidz_ayat_range: r.tahfidzAyatRange || null,
+    tahfidz_surah_from_number: r.tahfidzSurahFromNumber ?? null,
+    tahfidz_surah_from_name: r.tahfidzSurahFromName || null,
+    tahfidz_ayat_from: r.tahfidzAyatFrom || null,
+    tahfidz_surah_to_number: r.tahfidzSurahToNumber ?? null,
+    tahfidz_surah_to_name: r.tahfidzSurahToName || null,
+    tahfidz_ayat_to: r.tahfidzAyatTo || null,
     grade: r.grade,
     notes: r.notes || null,
     created_at: r.createdAt || new Date().toISOString()
@@ -1008,18 +1020,22 @@ class StorageManager {
     return true;
   }
 
-  // --- getRekapGuru(kelas, bulan, tahun, jenis) ---
+  // --- getRekapGuru(kelas, bulan, tahun, jenis, guruPengampu) ---
   public getRekapGuru(
     kelas: string,
     bulan: number | string,
     tahun: number | string,
-    jenis?: 'all' | 'tahsin' | 'tahfidz'
+    jenis?: 'all' | 'tahsin' | 'tahfidz',
+    guruPengampu?: string
   ): MemorizationRecord[] {
     return this.records.filter(r => {
       if (kelas && kelas !== 'ALL' && r.classId.toUpperCase() !== kelas.toUpperCase()) {
         return false;
       }
       if (jenis && jenis !== 'all' && r.type !== jenis) {
+        return false;
+      }
+      if (guruPengampu && guruPengampu !== 'ALL' && r.teacherName !== guruPengampu && r.teacherId !== guruPengampu) {
         return false;
       }
       const recordDate = new Date(r.date);

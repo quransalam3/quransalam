@@ -27,11 +27,13 @@ export function exportRekapToExcel(
   kelas: string,
   bulan: number | string,
   tahun: number | string,
-  jenisLabel: string = 'Semua'
+  jenisLabel: string = 'Semua',
+  guruLabel: string = 'ALL'
 ) {
   const bulanText = bulan === 'ALL' ? 'Semua-Bulan' : getMonthLabel(bulan);
   const kelasText = kelas === 'ALL' ? 'Semua-Kelas' : `Kelas-${kelas}`;
   const jenisText = jenisLabel === 'all' || jenisLabel === 'Semua' ? 'Lengkap' : jenisLabel === 'tahsin' ? 'Tahsin' : 'Tahfidz';
+  const guruClean = guruLabel === 'ALL' ? '' : `_${guruLabel.split(' ')[0].replace(/[^a-zA-Z0-9]/g, '')}`;
 
   const rows = records.map((r, index) => {
     let materi = '';
@@ -78,7 +80,7 @@ export function exportRekapToExcel(
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Rekap Capaian');
 
   // Generate filename
-  const fileName = `Rekap_SALAM_Quran_${jenisText}_${kelasText}_${bulanText}_${tahun}.xlsx`;
+  const fileName = `Rekap_SALAM_Quran_${jenisText}_${kelasText}_${bulanText}_${tahun}${guruClean}.xlsx`;
   XLSX.writeFile(workbook, fileName);
 }
 
