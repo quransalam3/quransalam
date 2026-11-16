@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, MemorizationRecord } from '../types';
+import { User } from '../types';
 import { storage, useStorageSubscription } from '../lib/storage';
 import { LetterheadKop } from '../components/LetterheadKop';
 import { exportSingleStudentToExcel, AVAILABLE_YEARS, MONTH_NAMES } from '../lib/exportUtils';
@@ -12,15 +12,8 @@ import {
   Printer, 
   Sparkles, 
   UserCheck, 
-  TrendingUp, 
-  CheckCircle,
   FileCheck,
-  Filter,
-  Trophy,
-  Crown,
-  Medal,
-  Flame,
-  Search
+  Filter
 } from 'lucide-react';
 
 interface WaliDashboardProps {
@@ -41,7 +34,6 @@ export const WaliDashboard: React.FC<WaliDashboardProps> = ({ currentUser }) => 
   const [filterYear, setFilterYear] = useState<number | string>(defaultYear);
   const [filterJenis, setFilterJenis] = useState<'all' | 'tahsin' | 'tahfidz'>('all');
   const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
-  const [leaderboardSearch, setLeaderboardSearch] = useState<string>('');
 
   // Retrieve records for this student
   const allStudentRecords = storage.getRecords({
@@ -82,65 +74,6 @@ export const WaliDashboard: React.FC<WaliDashboardProps> = ({ currentUser }) => 
   const latestTahsin = filteredRecords.find(r => r.type === 'tahsin');
   // Latest Tahfidz progress
   const latestTahfidz = filteredRecords.find(r => r.type === 'tahfidz');
-
-  // --- LEADERBOARD CAPAIAN TAHFIDZ (KHUSUS AKTIFITAS ZIYADAH) 1 KELAS ---
-  const classStudents = storage.getStudents(classId);
-  const allClassRecords = storage.getRecords({ classId });
-
-  // Filter khusus pembelajaran Tahfidz dengan aktifitas Ziyadah saja
-  const ziyadahRecords = allClassRecords.filter(r => 
-    r.type === 'tahfidz' && 
-    (r.tahfidzActivity === 'Ziyadah (Tambahan)' || r.tahfidzActivity?.toLowerCase().includes('ziyadah'))
-  );
-
-  const studentZiyadahStats: Record<string, {
-    count: number;
-    lancarCount: number;
-    lastRecord?: MemorizationRecord;
-  }> = {};
-
-  classStudents.forEach(st => {
-    studentZiyadahStats[st.name] = { count: 0, lancarCount: 0 };
-  });
-
-  ziyadahRecords.forEach(rec => {
-    if (!studentZiyadahStats[rec.studentName]) {
-      studentZiyadahStats[rec.studentName] = { count: 0, lancarCount: 0 };
-    }
-    studentZiyadahStats[rec.studentName].count += 1;
-    if (rec.grade === 'Lancar' || rec.grade.includes('Mumtaz') || rec.grade.includes('Jayyid')) {
-      studentZiyadahStats[rec.studentName].lancarCount += 1;
-    }
-    const curLast = studentZiyadahStats[rec.studentName].lastRecord;
-    if (!curLast || new Date(rec.date).getTime() > new Date(curLast.date).getTime()) {
-      studentZiyadahStats[rec.studentName].lastRecord = rec;
-    }
-  });
-
-  const fullLeaderboard = classStudents.map(st => {
-    const stats = studentZiyadahStats[st.name] || { count: 0, lancarCount: 0 };
-    const isCurrent = st.name.trim().toLowerCase() === studentName.trim().toLowerCase();
-    return {
-      studentId: st.id,
-      name: st.name,
-      count: stats.count,
-      lancarCount: stats.lancarCount,
-      lastRecord: stats.lastRecord,
-      isCurrentStudent: isCurrent
-    };
-  }).sort((a, b) => {
-    if (b.count !== a.count) return b.count - a.count;
-    if (b.lancarCount !== a.lancarCount) return b.lancarCount - a.lancarCount;
-    return a.name.localeCompare(b.name);
-  });
-
-  const currentStudentRank = fullLeaderboard.findIndex(item => item.isCurrentStudent) + 1;
-  const currentStudentStats = fullLeaderboard.find(item => item.isCurrentStudent);
-
-  const displayedLeaderboard = fullLeaderboard.filter(item => {
-    if (!leaderboardSearch) return true;
-    return item.name.toLowerCase().includes(leaderboardSearch.toLowerCase());
-  });
 
   const handleDownloadExcel = () => {
     exportSingleStudentToExcel(filteredRecords, studentName, classId, filterJenis);
@@ -220,244 +153,6 @@ export const WaliDashboard: React.FC<WaliDashboardProps> = ({ currentUser }) => 
           </div>
           <p className="text-2xl font-black text-[#3F4E5A] mt-2">{mumtazCount}</p>
           <p className="text-[11px] text-amber-600 font-semibold mt-0.5">Nilai A (Mumtaz)</p>
-        </div>
-      </div>
-
-      {/* LEADERBOARD CAPAIAN TAHFIDZ (KHUSUS AKTIFITAS ZIYADAH) KELAS INI */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-gray-100 space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-white flex items-center justify-center shadow-md">
-              <Trophy className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-lg font-black text-[#3F4E5A]">
-                  Leaderboard Capaian Tahfidz (Ziyadah) &bull; Kelas {classId}
-                </h2>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-800 border border-amber-200">
-                  Khusus Aktifitas Ziyadah
-                </span>
-              </div>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Peringkat keaktifan & akumulasi capaian setoran hafalan baru (Ziyadah) seluruh santri Kelas {classId}.
-              </p>
-            </div>
-          </div>
-
-          {/* Posisi Anak Anda */}
-          <div className="bg-teal-50 border border-teal-200 rounded-2xl p-3 px-4 flex items-center gap-3 self-start sm:self-auto shadow-xs">
-            <div className="w-8 h-8 rounded-xl bg-[#00C2A0] text-white flex items-center justify-center font-black text-sm">
-              #{currentStudentRank > 0 ? currentStudentRank : '-'}
-            </div>
-            <div>
-              <span className="text-[10px] font-bold text-[#008E75] block uppercase tracking-wider">
-                Posisi Ananda Saat Ini
-              </span>
-              <p className="text-xs font-bold text-[#3F4E5A]">
-                Peringkat <strong className="text-[#008E75]">#{currentStudentRank}</strong> dari {classStudents.length} Santri
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Podium Top 3 Santri (jika ada data) */}
-        {fullLeaderboard.some(s => s.count > 0) && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-            {/* Juara 2 */}
-            {fullLeaderboard.length > 1 && (
-              <div className="p-4 rounded-2xl bg-gradient-to-b from-gray-50 to-slate-100 border border-slate-200 flex flex-col justify-between order-2 md:order-1 relative overflow-hidden">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-extrabold px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 flex items-center gap-1">
-                    🥈 Peringkat 2
-                  </span>
-                  <Medal className="w-5 h-5 text-slate-400" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-gray-800 truncate" title={fullLeaderboard[1].name}>
-                    {fullLeaderboard[1].name}
-                  </h4>
-                  {fullLeaderboard[1].isCurrentStudent && (
-                    <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 bg-teal-100 text-[#008E75] rounded-md">
-                      ⭐ Ananda
-                    </span>
-                  )}
-                  <p className="text-lg font-black text-[#3F4E5A] mt-2">
-                    {fullLeaderboard[1].count} <span className="text-xs font-normal text-gray-500">Setoran Ziyadah</span>
-                  </p>
-                  <p className="text-[11px] text-gray-500 mt-0.5 truncate">
-                    {fullLeaderboard[1].lastRecord ? `Surat ${fullLeaderboard[1].lastRecord.tahfidzSurahName || '-'}` : 'Belum ada setoran'}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Juara 1 */}
-            {fullLeaderboard.length > 0 && (
-              <div className="p-5 rounded-2xl bg-gradient-to-b from-amber-50 to-yellow-100 border-2 border-amber-300 shadow-md flex flex-col justify-between order-1 md:order-2 relative overflow-hidden">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-black px-2.5 py-0.5 rounded-md bg-amber-200 text-amber-900 flex items-center gap-1 shadow-xs">
-                    🥇 Juara 1 Kelas
-                  </span>
-                  <Crown className="w-6 h-6 text-amber-500 animate-bounce" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-black text-amber-950 truncate" title={fullLeaderboard[0].name}>
-                    {fullLeaderboard[0].name}
-                  </h4>
-                  {fullLeaderboard[0].isCurrentStudent && (
-                    <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 bg-teal-600 text-white rounded-md shadow-xs">
-                      ⭐ Putra/Putri Anda
-                    </span>
-                  )}
-                  <p className="text-2xl font-black text-amber-900 mt-2">
-                    {fullLeaderboard[0].count} <span className="text-xs font-semibold text-amber-700">Setoran Ziyadah</span>
-                  </p>
-                  <p className="text-xs font-semibold text-amber-800 mt-0.5 truncate">
-                    {fullLeaderboard[0].lastRecord ? `Terakhir: Surat ${fullLeaderboard[0].lastRecord.tahfidzSurahName || '-'} (Ayat ${fullLeaderboard[0].lastRecord.tahfidzAyatRange || '-'})` : 'Belum ada setoran'}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Juara 3 */}
-            {fullLeaderboard.length > 2 && (
-              <div className="p-4 rounded-2xl bg-gradient-to-b from-amber-50/50 to-orange-100/60 border border-amber-200 flex flex-col justify-between order-3 relative overflow-hidden">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-extrabold px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-800 flex items-center gap-1">
-                    🥉 Peringkat 3
-                  </span>
-                  <Medal className="w-5 h-5 text-amber-600" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-gray-800 truncate" title={fullLeaderboard[2].name}>
-                    {fullLeaderboard[2].name}
-                  </h4>
-                  {fullLeaderboard[2].isCurrentStudent && (
-                    <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 bg-teal-100 text-[#008E75] rounded-md">
-                      ⭐ Ananda
-                    </span>
-                  )}
-                  <p className="text-lg font-black text-[#3F4E5A] mt-2">
-                    {fullLeaderboard[2].count} <span className="text-xs font-normal text-gray-500">Setoran Ziyadah</span>
-                  </p>
-                  <p className="text-[11px] text-gray-500 mt-0.5 truncate">
-                    {fullLeaderboard[2].lastRecord ? `Surat ${fullLeaderboard[2].lastRecord.tahfidzSurahName || '-'}` : 'Belum ada setoran'}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Search bar inside Leaderboard */}
-        <div className="flex items-center justify-between gap-3 pt-2">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              value={leaderboardSearch}
-              onChange={(e) => setLeaderboardSearch(e.target.value)}
-              placeholder="Cari santri di kelas ini..."
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#00C2A0] bg-gray-50/50"
-            />
-          </div>
-          <span className="text-xs font-semibold text-gray-400">
-            Total {classStudents.length} Santri
-          </span>
-        </div>
-
-        {/* Full Leaderboard Table */}
-        <div className="overflow-x-auto rounded-2xl border border-gray-100 shadow-xs max-h-[380px] overflow-y-auto">
-          <table className="min-w-full divide-y divide-gray-100 text-left text-xs">
-            <thead className="bg-gray-50 text-gray-600 font-bold sticky top-0 z-10 shadow-xs">
-              <tr>
-                <th className="px-4 py-3 w-16 text-center">Rank</th>
-                <th className="px-4 py-3">Nama Santri</th>
-                <th className="px-4 py-3 text-center">Setoran Ziyadah</th>
-                <th className="px-4 py-3 text-center">Setoran Lancar</th>
-                <th className="px-4 py-3">Capaian Ziyadah Terakhir</th>
-                <th className="px-4 py-3">Tanggal Terakhir</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
-              {displayedLeaderboard.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
-                    Tidak ada santri yang sesuai pencarian.
-                  </td>
-                </tr>
-              ) : (
-                displayedLeaderboard.map((item, index) => {
-                  const actualRank = fullLeaderboard.findIndex(f => f.name === item.name) + 1;
-                  return (
-                    <tr
-                      key={item.studentId}
-                      className={`transition ${
-                        item.isCurrentStudent
-                          ? 'bg-teal-50/70 border-l-4 border-l-[#00C2A0] font-semibold text-[#008E75]'
-                          : 'hover:bg-gray-50/80 text-gray-700'
-                      }`}
-                    >
-                      <td className="px-4 py-2.5 text-center font-bold">
-                        {actualRank === 1 ? (
-                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-100 text-amber-800 text-xs shadow-xs">
-                            🥇 1
-                          </span>
-                        ) : actualRank === 2 ? (
-                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-100 text-slate-700 text-xs shadow-xs">
-                            🥈 2
-                          </span>
-                        ) : actualRank === 3 ? (
-                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-orange-100 text-orange-800 text-xs shadow-xs">
-                            🥉 3
-                          </span>
-                        ) : (
-                          <span className="text-gray-400 font-mono">#{actualRank}</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <div className="flex items-center gap-2">
-                          <span className={`font-bold ${item.isCurrentStudent ? 'text-[#008E75] text-sm' : 'text-[#3F4E5A]'}`}>
-                            {item.name}
-                          </span>
-                          {item.isCurrentStudent && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#00C2A0] text-white shadow-xs">
-                              ⭐ Putra/Putri Anda
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-2.5 text-center">
-                        <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-black ${
-                          item.count > 0 ? 'bg-teal-100 text-[#008E75]' : 'bg-gray-100 text-gray-400'
-                        }`}>
-                          {item.count} Kali
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-center">
-                        <span className="text-xs font-bold text-emerald-700">
-                          {item.lancarCount} Lancar
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5">
-                        {item.lastRecord ? (
-                          <span className="text-xs font-semibold text-gray-800">
-                            Surat {item.lastRecord.tahfidzSurahName || '-'} <span className="text-[#00C2A0] font-bold">(Ayat {item.lastRecord.tahfidzAyatRange || '-'})</span>
-                          </span>
-                        ) : (
-                          <span className="text-gray-400 text-[11px] italic">Belum ada catatan</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2.5 text-gray-500 whitespace-nowrap text-[11px]">
-                        {item.lastRecord ? item.lastRecord.date : '-'}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
         </div>
       </div>
 
