@@ -19,14 +19,18 @@ export function generateSupabaseSqlScript(
   parts.push(`-- =========================================================================
 -- SKRIP STRUKTUR TABEL & DATA AWAL RESMI: SALAM QURAN
 -- SD ISLAM TERPADU SALSABILA 3 BANGUNTAPAN
--- Siap dieksekusi di Supabase SQL Editor
+-- Siap dieksekusi di Supabase SQL Editor (Aman untuk DB baru maupun DB lama)
 -- Proyek Supabase: https://ubyrtmcrdeltgcfurouy.supabase.co
 --
--- DUKUNGAN PENUH UNTUK:
--- 1. Supabase Table Editor: Trigger otomatis sinkronisasi kolom snake_case & camelCase
--- 2. Penyimpanan Realtime: REPLICA IDENTITY FULL dan publikasi supabase_realtime
--- 3. Domain Vercel: Kebijakan RLS Public Access untuk koneksi web dari domain Vercel
--- 4. Kata sandi default awal guru & wali: salsabila3 (bersih tanpa data simulasi)
+-- DUKUNGAN PENUH UNTUK FITUR TERBARU:
+-- 1. Tahsin: Buku Yanfa'una Jilid Pemula s/d 6 + Al-Qur'an, Nilai (Lanjut / Ulangi)
+-- 2. Tahfidz: Aktivitas (Ziyadah, Murojaah, Evaluasi), Pilihan 5 Juz (1, 2, 28, 29, 30),
+--    Rentang Surat & Ayat Dari - Sampai, Nilai (Lancar/Kurang Lancar/Belum Lancar & A/A-/B/C)
+-- 3. Leaderboard Tahfidz Ziyadah Kelas (Wali) & Filter/Rekap Lengkap (Guru)
+-- 4. Supabase Table Editor: Trigger otomatis sinkronisasi kolom snake_case & camelCase
+-- 5. Penyimpanan Realtime: REPLICA IDENTITY FULL & publikasi supabase_realtime
+-- 6. Domain Vercel: Kebijakan RLS Public Access untuk koneksi web dari domain Vercel
+-- 7. Kata sandi default awal guru & wali: salsabila3 (bersih tanpa data simulasi)
 -- =========================================================================
 
 -- -------------------------------------------------------------------------
@@ -103,11 +107,43 @@ CREATE TABLE IF NOT EXISTS memorization_records (
   "tahfidzSurahName" TEXT,
   tahfidz_ayat_range TEXT,
   "tahfidzAyatRange" TEXT,
+  tahfidz_surah_from_number INTEGER,
+  "tahfidzSurahFromNumber" INTEGER,
+  tahfidz_surah_from_name TEXT,
+  "tahfidzSurahFromName" TEXT,
+  tahfidz_ayat_from TEXT,
+  "tahfidzAyatFrom" TEXT,
+  tahfidz_surah_to_number INTEGER,
+  "tahfidzSurahToNumber" INTEGER,
+  tahfidz_surah_to_name TEXT,
+  "tahfidzSurahToName" TEXT,
+  tahfidz_ayat_to TEXT,
+  "tahfidzAyatTo" TEXT,
   grade TEXT NOT NULL,
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  "createdAt" TIMESTAMPTZ DEFAULT NOW()
+  "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ,
+  "updatedAt" TIMESTAMPTZ
 );
+
+-- Migrasi aman untuk tabel yang sudah terpasang sebelumnya (Idempotent)
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS tahfidz_activity TEXT;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS "tahfidzActivity" TEXT;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS tahfidz_surah_from_number INTEGER;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS "tahfidzSurahFromNumber" INTEGER;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS tahfidz_surah_from_name TEXT;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS "tahfidzSurahFromName" TEXT;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS tahfidz_ayat_from TEXT;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS "tahfidzAyatFrom" TEXT;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS tahfidz_surah_to_number INTEGER;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS "tahfidzSurahToNumber" INTEGER;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS tahfidz_surah_to_name TEXT;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS "tahfidzSurahToName" TEXT;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS tahfidz_ayat_to TEXT;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS "tahfidzAyatTo" TEXT;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMPTZ;
 
 -- F. Tabel Log Audit Aktivitas Admin
 CREATE TABLE IF NOT EXISTS activity_logs (
@@ -175,8 +211,29 @@ BEGIN
     IF NEW.tahfidz_ayat_range IS DISTINCT FROM OLD.tahfidz_ayat_range THEN NEW."tahfidzAyatRange" := NEW.tahfidz_ayat_range;
     ELSIF NEW."tahfidzAyatRange" IS DISTINCT FROM OLD."tahfidzAyatRange" THEN NEW.tahfidz_ayat_range := NEW."tahfidzAyatRange"; END IF;
 
+    IF NEW.tahfidz_surah_from_number IS DISTINCT FROM OLD.tahfidz_surah_from_number THEN NEW."tahfidzSurahFromNumber" := NEW.tahfidz_surah_from_number;
+    ELSIF NEW."tahfidzSurahFromNumber" IS DISTINCT FROM OLD."tahfidzSurahFromNumber" THEN NEW.tahfidz_surah_from_number := NEW."tahfidzSurahFromNumber"; END IF;
+
+    IF NEW.tahfidz_surah_from_name IS DISTINCT FROM OLD.tahfidz_surah_from_name THEN NEW."tahfidzSurahFromName" := NEW.tahfidz_surah_from_name;
+    ELSIF NEW."tahfidzSurahFromName" IS DISTINCT FROM OLD."tahfidzSurahFromName" THEN NEW.tahfidz_surah_from_name := NEW."tahfidzSurahFromName"; END IF;
+
+    IF NEW.tahfidz_ayat_from IS DISTINCT FROM OLD.tahfidz_ayat_from THEN NEW."tahfidzAyatFrom" := NEW.tahfidz_ayat_from;
+    ELSIF NEW."tahfidzAyatFrom" IS DISTINCT FROM OLD."tahfidzAyatFrom" THEN NEW.tahfidz_ayat_from := NEW."tahfidzAyatFrom"; END IF;
+
+    IF NEW.tahfidz_surah_to_number IS DISTINCT FROM OLD.tahfidz_surah_to_number THEN NEW."tahfidzSurahToNumber" := NEW.tahfidz_surah_to_number;
+    ELSIF NEW."tahfidzSurahToNumber" IS DISTINCT FROM OLD."tahfidzSurahToNumber" THEN NEW.tahfidz_surah_to_number := NEW."tahfidzSurahToNumber"; END IF;
+
+    IF NEW.tahfidz_surah_to_name IS DISTINCT FROM OLD.tahfidz_surah_to_name THEN NEW."tahfidzSurahToName" := NEW.tahfidz_surah_to_name;
+    ELSIF NEW."tahfidzSurahToName" IS DISTINCT FROM OLD."tahfidzSurahToName" THEN NEW.tahfidz_surah_to_name := NEW."tahfidzSurahToName"; END IF;
+
+    IF NEW.tahfidz_ayat_to IS DISTINCT FROM OLD.tahfidz_ayat_to THEN NEW."tahfidzAyatTo" := NEW.tahfidz_ayat_to;
+    ELSIF NEW."tahfidzAyatTo" IS DISTINCT FROM OLD."tahfidzAyatTo" THEN NEW.tahfidz_ayat_to := NEW."tahfidzAyatTo"; END IF;
+
     IF NEW.created_at IS DISTINCT FROM OLD.created_at THEN NEW."createdAt" := NEW.created_at;
     ELSIF NEW."createdAt" IS DISTINCT FROM OLD."createdAt" THEN NEW.created_at := NEW."createdAt"; END IF;
+
+    IF NEW.updated_at IS DISTINCT FROM OLD.updated_at THEN NEW."updatedAt" := NEW.updated_at;
+    ELSIF NEW."updatedAt" IS DISTINCT FROM OLD."updatedAt" THEN NEW.updated_at := NEW."updatedAt"; END IF;
   ELSE
     IF NEW.class_id IS NOT NULL AND NEW."classId" IS NULL THEN NEW."classId" := NEW.class_id;
     ELSIF NEW."classId" IS NOT NULL AND NEW.class_id IS NULL THEN NEW.class_id := NEW."classId"; END IF;
@@ -223,8 +280,29 @@ BEGIN
     IF NEW.tahfidz_ayat_range IS NOT NULL AND NEW."tahfidzAyatRange" IS NULL THEN NEW."tahfidzAyatRange" := NEW.tahfidz_ayat_range;
     ELSIF NEW."tahfidzAyatRange" IS NOT NULL AND NEW.tahfidz_ayat_range IS NULL THEN NEW.tahfidz_ayat_range := NEW."tahfidzAyatRange"; END IF;
 
+    IF NEW.tahfidz_surah_from_number IS NOT NULL AND NEW."tahfidzSurahFromNumber" IS NULL THEN NEW."tahfidzSurahFromNumber" := NEW.tahfidz_surah_from_number;
+    ELSIF NEW."tahfidzSurahFromNumber" IS NOT NULL AND NEW.tahfidz_surah_from_number IS NULL THEN NEW.tahfidz_surah_from_number := NEW."tahfidzSurahFromNumber"; END IF;
+
+    IF NEW.tahfidz_surah_from_name IS NOT NULL AND NEW."tahfidzSurahFromName" IS NULL THEN NEW."tahfidzSurahFromName" := NEW.tahfidz_surah_from_name;
+    ELSIF NEW."tahfidzSurahFromName" IS NOT NULL AND NEW.tahfidz_surah_from_name IS NULL THEN NEW.tahfidz_surah_from_name := NEW."tahfidzSurahFromName"; END IF;
+
+    IF NEW.tahfidz_ayat_from IS NOT NULL AND NEW."tahfidzAyatFrom" IS NULL THEN NEW."tahfidzAyatFrom" := NEW.tahfidz_ayat_from;
+    ELSIF NEW."tahfidzAyatFrom" IS NOT NULL AND NEW.tahfidz_ayat_from IS NULL THEN NEW.tahfidz_ayat_from := NEW."tahfidzAyatFrom"; END IF;
+
+    IF NEW.tahfidz_surah_to_number IS NOT NULL AND NEW."tahfidzSurahToNumber" IS NULL THEN NEW."tahfidzSurahToNumber" := NEW.tahfidz_surah_to_number;
+    ELSIF NEW."tahfidzSurahToNumber" IS NOT NULL AND NEW.tahfidz_surah_to_number IS NULL THEN NEW.tahfidz_surah_to_number := NEW."tahfidzSurahToNumber"; END IF;
+
+    IF NEW.tahfidz_surah_to_name IS NOT NULL AND NEW."tahfidzSurahToName" IS NULL THEN NEW."tahfidzSurahToName" := NEW.tahfidz_surah_to_name;
+    ELSIF NEW."tahfidzSurahToName" IS NOT NULL AND NEW.tahfidz_surah_to_name IS NULL THEN NEW.tahfidz_surah_to_name := NEW."tahfidzSurahToName"; END IF;
+
+    IF NEW.tahfidz_ayat_to IS NOT NULL AND NEW."tahfidzAyatTo" IS NULL THEN NEW."tahfidzAyatTo" := NEW.tahfidz_ayat_to;
+    ELSIF NEW."tahfidzAyatTo" IS NOT NULL AND NEW.tahfidz_ayat_to IS NULL THEN NEW.tahfidz_ayat_to := NEW."tahfidzAyatTo"; END IF;
+
     IF NEW.created_at IS NOT NULL AND NEW."createdAt" IS NULL THEN NEW."createdAt" := NEW.created_at;
     ELSIF NEW."createdAt" IS NOT NULL AND NEW.created_at IS NULL THEN NEW.created_at := NEW."createdAt"; END IF;
+
+    IF NEW.updated_at IS NOT NULL AND NEW."updatedAt" IS NULL THEN NEW."updatedAt" := NEW.updated_at;
+    ELSIF NEW."updatedAt" IS NOT NULL AND NEW.updated_at IS NULL THEN NEW.updated_at := NEW."updatedAt"; END IF;
   END IF;
 
   RETURN NEW;
@@ -347,12 +425,15 @@ BEFORE INSERT OR UPDATE ON activity_logs
 FOR EACH ROW EXECUTE FUNCTION sync_log_columns();
 
 -- -------------------------------------------------------------------------
--- 3. INDEX OPTIMASI PENCARIAN
+-- 3. INDEX OPTIMASI PENCARIAN, FILTER & LEADERBOARD
 -- -------------------------------------------------------------------------
 CREATE INDEX IF NOT EXISTS idx_students_class ON students(class_id);
 CREATE INDEX IF NOT EXISTS idx_records_class_student ON memorization_records(class_id, student_name);
 CREATE INDEX IF NOT EXISTS idx_records_date ON memorization_records(date DESC);
 CREATE INDEX IF NOT EXISTS idx_records_teacher ON memorization_records(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_records_teacher_name ON memorization_records(teacher_name);
+CREATE INDEX IF NOT EXISTS idx_records_type ON memorization_records(type);
+CREATE INDEX IF NOT EXISTS idx_records_leaderboard ON memorization_records(class_id, type, tahfidz_activity);
 CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON activity_logs(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_auth_role ON auth_accounts(role);
 
@@ -443,18 +524,18 @@ END $$;
 
 `);
 
-  // 5. DATA AWAL KELAS
+  // 6. DATA AWAL KELAS
   parts.push(`-- -------------------------------------------------------------------------
--- 5. INSERT DATA KELAS (${classes.length} KELAS LENGKAP)
+-- 6. INSERT DATA KELAS (${classes.length} KELAS LENGKAP)
 -- -------------------------------------------------------------------------`);
   if (classes.length > 0) {
     const classRows = classes.map(c => `('${escapeSql(c)}')`).join(',\n');
     parts.push(`INSERT INTO classes (id) VALUES\n${classRows}\nON CONFLICT (id) DO NOTHING;\n`);
   }
 
-  // 6. DATA AWAL DEWAN GURU
+  // 7. DATA AWAL DEWAN GURU
   parts.push(`-- -------------------------------------------------------------------------
--- 6. INSERT DATA DEWAN GURU QUR'AN (${teachers.length} GURU)
+-- 7. INSERT DATA DEWAN GURU QUR'AN (${teachers.length} GURU)
 -- -------------------------------------------------------------------------`);
   if (teachers.length > 0) {
     const teacherRows = teachers.map(t =>
@@ -463,9 +544,9 @@ END $$;
     parts.push(`INSERT INTO teachers (id, name, username) VALUES\n${teacherRows}\nON CONFLICT (id) DO NOTHING;\n`);
   }
 
-  // 7. DATA AWAL PESERTA DIDIK
+  // 8. DATA AWAL PESERTA DIDIK
   parts.push(`-- -------------------------------------------------------------------------
--- 7. INSERT DATA PESERTA DIDIK (${students.length} SISWA SD IT SALSABILA 3)
+-- 8. INSERT DATA PESERTA DIDIK (${students.length} SISWA SD IT SALSABILA 3)
 -- -------------------------------------------------------------------------`);
   if (students.length > 0) {
     const chunkSize = 100;
@@ -478,9 +559,9 @@ END $$;
     }
   }
 
-  // 8. DATA AWAL AKUN PENGGUNA (DEFAULT PASSWORD: salsabila3)
+  // 9. DATA AWAL AKUN PENGGUNA (DEFAULT PASSWORD: salsabila3)
   parts.push(`-- -------------------------------------------------------------------------
--- 8. INSERT DATA AKUN PENGGUNA (DEFAULT PASSWORD: salsabila3)
+-- 9. INSERT DATA AKUN PENGGUNA (DEFAULT PASSWORD: salsabila3)
 -- -------------------------------------------------------------------------`);
   
   const allAccountsToInsert: AuthAccount[] = accounts.length > 0 ? accounts.map(a => {
@@ -528,11 +609,11 @@ END $$;
     }
   }
 
-  // 9. DATA CATATAN CAPAIAN HAFALAN TERSIMPAN (BERSIH DARI SIMULASI)
+  // 10. DATA CATATAN CAPAIAN HAFALAN TERSIMPAN (BERSIH DARI SIMULASI)
   const realRecords = (records || []).filter(r => !String(r.id || '').startsWith('rec-demo-'));
   if (realRecords.length > 0) {
     parts.push(`-- -------------------------------------------------------------------------
--- 9. INSERT DATA CATATAN CAPAIAN HAFALAN TERSIMPAN (${realRecords.length} DATA)
+-- 10. INSERT DATA CATATAN CAPAIAN HAFALAN TERSIMPAN (${realRecords.length} DATA)
 -- -------------------------------------------------------------------------`);
     const chunkSize = 100;
     for (let i = 0; i < realRecords.length; i += chunkSize) {
@@ -548,19 +629,26 @@ END $$;
         const hSurahNum = r.tahfidzSurahNumber ? r.tahfidzSurahNumber : 'NULL';
         const hSurahName = r.tahfidzSurahName ? `'${escapeSql(r.tahfidzSurahName)}'` : 'NULL';
         const hAyatRange = r.tahfidzAyatRange ? `'${escapeSql(r.tahfidzAyatRange)}'` : 'NULL';
+        const hSurahFromNum = r.tahfidzSurahFromNumber ? r.tahfidzSurahFromNumber : 'NULL';
+        const hSurahFromName = r.tahfidzSurahFromName ? `'${escapeSql(r.tahfidzSurahFromName)}'` : 'NULL';
+        const hAyatFrom = r.tahfidzAyatFrom ? `'${escapeSql(r.tahfidzAyatFrom)}'` : 'NULL';
+        const hSurahToNum = r.tahfidzSurahToNumber ? r.tahfidzSurahToNumber : 'NULL';
+        const hSurahToName = r.tahfidzSurahToName ? `'${escapeSql(r.tahfidzSurahToName)}'` : 'NULL';
+        const hAyatTo = r.tahfidzAyatTo ? `'${escapeSql(r.tahfidzAyatTo)}'` : 'NULL';
         const notes = r.notes ? `'${escapeSql(r.notes)}'` : 'NULL';
+        const updatedAt = r.updatedAt ? `'${r.updatedAt}'` : 'NULL';
 
-        return `('${escapeSql(r.id)}', '${r.date}', '${escapeSql(r.classId)}', '${escapeSql(r.classId)}', '${escapeSql(r.studentId)}', '${escapeSql(r.studentId)}', '${escapeSql(r.studentName)}', '${escapeSql(r.studentName)}', '${escapeSql(r.teacherId)}', '${escapeSql(r.teacherId)}', '${escapeSql(r.teacherName)}', '${escapeSql(r.teacherName)}', '${r.type}', ${tBook}, ${tBook}, ${tPage}, ${tPage}, ${tSurahNum}, ${tSurahNum}, ${tSurahName}, ${tSurahName}, ${tLastAyat}, ${tLastAyat}, ${hAct}, ${hAct}, ${hJuz}, ${hJuz}, ${hSurahNum}, ${hSurahNum}, ${hSurahName}, ${hSurahName}, ${hAyatRange}, ${hAyatRange}, '${escapeSql(r.grade)}', ${notes}, '${r.createdAt}', '${r.createdAt}')`;
+        return `('${escapeSql(r.id)}', '${r.date}', '${escapeSql(r.classId)}', '${escapeSql(r.classId)}', '${escapeSql(r.studentId)}', '${escapeSql(r.studentId)}', '${escapeSql(r.studentName)}', '${escapeSql(r.studentName)}', '${escapeSql(r.teacherId)}', '${escapeSql(r.teacherId)}', '${escapeSql(r.teacherName)}', '${escapeSql(r.teacherName)}', '${r.type}', ${tBook}, ${tBook}, ${tPage}, ${tPage}, ${tSurahNum}, ${tSurahNum}, ${tSurahName}, ${tSurahName}, ${tLastAyat}, ${tLastAyat}, ${hAct}, ${hAct}, ${hJuz}, ${hJuz}, ${hSurahNum}, ${hSurahNum}, ${hSurahName}, ${hSurahName}, ${hAyatRange}, ${hAyatRange}, ${hSurahFromNum}, ${hSurahFromNum}, ${hSurahFromName}, ${hSurahFromName}, ${hAyatFrom}, ${hAyatFrom}, ${hSurahToNum}, ${hSurahToNum}, ${hSurahToName}, ${hSurahToName}, ${hAyatTo}, ${hAyatTo}, '${escapeSql(r.grade)}', ${notes}, '${r.createdAt}', '${r.createdAt}', ${updatedAt}, ${updatedAt})`;
       }).join(',\n');
-      parts.push(`INSERT INTO memorization_records (id, date, class_id, "classId", student_id, "studentId", student_name, "studentName", teacher_id, "teacherId", teacher_name, "teacherName", type, tahsin_book, "tahsinBook", tahsin_page, "tahsinPage", tahsin_surah_number, "tahsinSurahNumber", tahsin_surah_name, "tahsinSurahName", tahsin_last_ayat, "tahsinLastAyat", tahfidz_activity, "tahfidzActivity", tahfidz_juz, "tahfidzJuz", tahfidz_surah_number, "tahfidzSurahNumber", tahfidz_surah_name, "tahfidzSurahName", tahfidz_ayat_range, "tahfidzAyatRange", grade, notes, created_at, "createdAt") VALUES\n${recordRows}\nON CONFLICT (id) DO NOTHING;\n`);
+      parts.push(`INSERT INTO memorization_records (id, date, class_id, "classId", student_id, "studentId", student_name, "studentName", teacher_id, "teacherId", teacher_name, "teacherName", type, tahsin_book, "tahsinBook", tahsin_page, "tahsinPage", tahsin_surah_number, "tahsinSurahNumber", tahsin_surah_name, "tahsinSurahName", tahsin_last_ayat, "tahsinLastAyat", tahfidz_activity, "tahfidzActivity", tahfidz_juz, "tahfidzJuz", tahfidz_surah_number, "tahfidzSurahNumber", tahfidz_surah_name, "tahfidzSurahName", tahfidz_ayat_range, "tahfidzAyatRange", tahfidz_surah_from_number, "tahfidzSurahFromNumber", tahfidz_surah_from_name, "tahfidzSurahFromName", tahfidz_ayat_from, "tahfidzAyatFrom", tahfidz_surah_to_number, "tahfidzSurahToNumber", tahfidz_surah_to_name, "tahfidzSurahToName", tahfidz_ayat_to, "tahfidzAyatTo", grade, notes, created_at, "createdAt", updated_at, "updatedAt") VALUES\n${recordRows}\nON CONFLICT (id) DO NOTHING;\n`);
     }
   }
 
-  // 10. LOG AKTIVITAS (BERSIH DARI SIMULASI)
+  // 11. LOG AKTIVITAS (BERSIH DARI SIMULASI)
   const realLogs = (logs || []).filter(l => !String(l.id || '').startsWith('log-demo-'));
   if (realLogs.length > 0) {
     parts.push(`-- -------------------------------------------------------------------------
--- 10. INSERT LOG AKTIVITAS AWAL (${realLogs.length} DATA)
+-- 11. INSERT LOG AKTIVITAS AWAL (${realLogs.length} DATA)
 -- -------------------------------------------------------------------------`);
     const logRows = realLogs.slice(0, 100).map(l =>
       `('${escapeSql(l.id)}', '${l.timestamp}', '${escapeSql(l.actionType)}', '${escapeSql(l.actionType)}', '${escapeSql(l.performedBy)}', '${escapeSql(l.performedBy)}', '${escapeSql(l.target)}', '${escapeSql(l.details)}')`

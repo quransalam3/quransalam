@@ -1,14 +1,18 @@
 -- =========================================================================
 -- SKRIP STRUKTUR TABEL & DATA AWAL RESMI: SALAM QURAN
 -- SD ISLAM TERPADU SALSABILA 3 BANGUNTAPAN
--- Siap dieksekusi di Supabase SQL Editor
+-- Siap dieksekusi di Supabase SQL Editor (Aman untuk DB baru maupun DB lama)
 -- Proyek Supabase: https://ubyrtmcrdeltgcfurouy.supabase.co
 --
--- DUKUNGAN PENUH UNTUK:
--- 1. Supabase Table Editor: Trigger otomatis sinkronisasi kolom snake_case & camelCase
--- 2. Penyimpanan Realtime: REPLICA IDENTITY FULL dan publikasi supabase_realtime
--- 3. Domain Vercel: Kebijakan RLS Public Access untuk koneksi web dari domain Vercel
--- 4. Kata sandi default awal guru & wali: salsabila3 (bersih tanpa data simulasi)
+-- DUKUNGAN PENUH UNTUK FITUR TERBARU:
+-- 1. Tahsin: Buku Yanfa'una Jilid Pemula s/d 6 + Al-Qur'an, Nilai (Lanjut / Ulangi)
+-- 2. Tahfidz: Aktivitas (Ziyadah, Murojaah, Evaluasi), Pilihan 5 Juz (1, 2, 28, 29, 30),
+--    Rentang Surat & Ayat Dari - Sampai, Nilai (Lancar/Kurang Lancar/Belum Lancar & A/A-/B/C)
+-- 3. Leaderboard Tahfidz Ziyadah Kelas (Wali) & Filter/Rekap Lengkap (Guru)
+-- 4. Supabase Table Editor: Trigger otomatis sinkronisasi kolom snake_case & camelCase
+-- 5. Penyimpanan Realtime: REPLICA IDENTITY FULL & publikasi supabase_realtime
+-- 6. Domain Vercel: Kebijakan RLS Public Access untuk koneksi web dari domain Vercel
+-- 7. Kata sandi default awal guru & wali: salsabila3 (bersih tanpa data simulasi)
 -- =========================================================================
 
 -- -------------------------------------------------------------------------
@@ -75,6 +79,8 @@ CREATE TABLE IF NOT EXISTS memorization_records (
   "tahsinSurahName" TEXT,
   tahsin_last_ayat TEXT,
   "tahsinLastAyat" TEXT,
+  tahfidz_activity TEXT,
+  "tahfidzActivity" TEXT,
   tahfidz_juz INTEGER,
   "tahfidzJuz" INTEGER,
   tahfidz_surah_number INTEGER,
@@ -83,11 +89,43 @@ CREATE TABLE IF NOT EXISTS memorization_records (
   "tahfidzSurahName" TEXT,
   tahfidz_ayat_range TEXT,
   "tahfidzAyatRange" TEXT,
+  tahfidz_surah_from_number INTEGER,
+  "tahfidzSurahFromNumber" INTEGER,
+  tahfidz_surah_from_name TEXT,
+  "tahfidzSurahFromName" TEXT,
+  tahfidz_ayat_from TEXT,
+  "tahfidzAyatFrom" TEXT,
+  tahfidz_surah_to_number INTEGER,
+  "tahfidzSurahToNumber" INTEGER,
+  tahfidz_surah_to_name TEXT,
+  "tahfidzSurahToName" TEXT,
+  tahfidz_ayat_to TEXT,
+  "tahfidzAyatTo" TEXT,
   grade TEXT NOT NULL,
   notes TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  "createdAt" TIMESTAMPTZ DEFAULT NOW()
+  "createdAt" TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ,
+  "updatedAt" TIMESTAMPTZ
 );
+
+-- Migrasi aman untuk tabel yang sudah terpasang sebelumnya (Idempotent)
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS tahfidz_activity TEXT;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS "tahfidzActivity" TEXT;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS tahfidz_surah_from_number INTEGER;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS "tahfidzSurahFromNumber" INTEGER;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS tahfidz_surah_from_name TEXT;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS "tahfidzSurahFromName" TEXT;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS tahfidz_ayat_from TEXT;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS "tahfidzAyatFrom" TEXT;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS tahfidz_surah_to_number INTEGER;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS "tahfidzSurahToNumber" INTEGER;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS tahfidz_surah_to_name TEXT;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS "tahfidzSurahToName" TEXT;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS tahfidz_ayat_to TEXT;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS "tahfidzAyatTo" TEXT;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
+ALTER TABLE memorization_records ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMPTZ;
 
 -- F. Tabel Log Audit Aktivitas Admin
 CREATE TABLE IF NOT EXISTS activity_logs (
@@ -140,6 +178,9 @@ BEGIN
     IF NEW.tahsin_last_ayat IS DISTINCT FROM OLD.tahsin_last_ayat THEN NEW."tahsinLastAyat" := NEW.tahsin_last_ayat;
     ELSIF NEW."tahsinLastAyat" IS DISTINCT FROM OLD."tahsinLastAyat" THEN NEW.tahsin_last_ayat := NEW."tahsinLastAyat"; END IF;
 
+    IF NEW.tahfidz_activity IS DISTINCT FROM OLD.tahfidz_activity THEN NEW."tahfidzActivity" := NEW.tahfidz_activity;
+    ELSIF NEW."tahfidzActivity" IS DISTINCT FROM OLD."tahfidzActivity" THEN NEW.tahfidz_activity := NEW."tahfidzActivity"; END IF;
+
     IF NEW.tahfidz_juz IS DISTINCT FROM OLD.tahfidz_juz THEN NEW."tahfidzJuz" := NEW.tahfidz_juz;
     ELSIF NEW."tahfidzJuz" IS DISTINCT FROM OLD."tahfidzJuz" THEN NEW.tahfidz_juz := NEW."tahfidzJuz"; END IF;
 
@@ -152,8 +193,29 @@ BEGIN
     IF NEW.tahfidz_ayat_range IS DISTINCT FROM OLD.tahfidz_ayat_range THEN NEW."tahfidzAyatRange" := NEW.tahfidz_ayat_range;
     ELSIF NEW."tahfidzAyatRange" IS DISTINCT FROM OLD."tahfidzAyatRange" THEN NEW.tahfidz_ayat_range := NEW."tahfidzAyatRange"; END IF;
 
+    IF NEW.tahfidz_surah_from_number IS DISTINCT FROM OLD.tahfidz_surah_from_number THEN NEW."tahfidzSurahFromNumber" := NEW.tahfidz_surah_from_number;
+    ELSIF NEW."tahfidzSurahFromNumber" IS DISTINCT FROM OLD."tahfidzSurahFromNumber" THEN NEW.tahfidz_surah_from_number := NEW."tahfidzSurahFromNumber"; END IF;
+
+    IF NEW.tahfidz_surah_from_name IS DISTINCT FROM OLD.tahfidz_surah_from_name THEN NEW."tahfidzSurahFromName" := NEW.tahfidz_surah_from_name;
+    ELSIF NEW."tahfidzSurahFromName" IS DISTINCT FROM OLD."tahfidzSurahFromName" THEN NEW.tahfidz_surah_from_name := NEW."tahfidzSurahFromName"; END IF;
+
+    IF NEW.tahfidz_ayat_from IS DISTINCT FROM OLD.tahfidz_ayat_from THEN NEW."tahfidzAyatFrom" := NEW.tahfidz_ayat_from;
+    ELSIF NEW."tahfidzAyatFrom" IS DISTINCT FROM OLD."tahfidzAyatFrom" THEN NEW.tahfidz_ayat_from := NEW."tahfidzAyatFrom"; END IF;
+
+    IF NEW.tahfidz_surah_to_number IS DISTINCT FROM OLD.tahfidz_surah_to_number THEN NEW."tahfidzSurahToNumber" := NEW.tahfidz_surah_to_number;
+    ELSIF NEW."tahfidzSurahToNumber" IS DISTINCT FROM OLD."tahfidzSurahToNumber" THEN NEW.tahfidz_surah_to_number := NEW."tahfidzSurahToNumber"; END IF;
+
+    IF NEW.tahfidz_surah_to_name IS DISTINCT FROM OLD.tahfidz_surah_to_name THEN NEW."tahfidzSurahToName" := NEW.tahfidz_surah_to_name;
+    ELSIF NEW."tahfidzSurahToName" IS DISTINCT FROM OLD."tahfidzSurahToName" THEN NEW.tahfidz_surah_to_name := NEW."tahfidzSurahToName"; END IF;
+
+    IF NEW.tahfidz_ayat_to IS DISTINCT FROM OLD.tahfidz_ayat_to THEN NEW."tahfidzAyatTo" := NEW.tahfidz_ayat_to;
+    ELSIF NEW."tahfidzAyatTo" IS DISTINCT FROM OLD."tahfidzAyatTo" THEN NEW.tahfidz_ayat_to := NEW."tahfidzAyatTo"; END IF;
+
     IF NEW.created_at IS DISTINCT FROM OLD.created_at THEN NEW."createdAt" := NEW.created_at;
     ELSIF NEW."createdAt" IS DISTINCT FROM OLD."createdAt" THEN NEW.created_at := NEW."createdAt"; END IF;
+
+    IF NEW.updated_at IS DISTINCT FROM OLD.updated_at THEN NEW."updatedAt" := NEW.updated_at;
+    ELSIF NEW."updatedAt" IS DISTINCT FROM OLD."updatedAt" THEN NEW.updated_at := NEW."updatedAt"; END IF;
   ELSE
     IF NEW.class_id IS NOT NULL AND NEW."classId" IS NULL THEN NEW."classId" := NEW.class_id;
     ELSIF NEW."classId" IS NOT NULL AND NEW.class_id IS NULL THEN NEW.class_id := NEW."classId"; END IF;
@@ -185,6 +247,9 @@ BEGIN
     IF NEW.tahsin_last_ayat IS NOT NULL AND NEW."tahsinLastAyat" IS NULL THEN NEW."tahsinLastAyat" := NEW.tahsin_last_ayat;
     ELSIF NEW."tahsinLastAyat" IS NOT NULL AND NEW.tahsin_last_ayat IS NULL THEN NEW.tahsin_last_ayat := NEW."tahsinLastAyat"; END IF;
 
+    IF NEW.tahfidz_activity IS NOT NULL AND NEW."tahfidzActivity" IS NULL THEN NEW."tahfidzActivity" := NEW.tahfidz_activity;
+    ELSIF NEW."tahfidzActivity" IS NOT NULL AND NEW.tahfidz_activity IS NULL THEN NEW.tahfidz_activity := NEW."tahfidzActivity"; END IF;
+
     IF NEW.tahfidz_juz IS NOT NULL AND NEW."tahfidzJuz" IS NULL THEN NEW."tahfidzJuz" := NEW.tahfidz_juz;
     ELSIF NEW."tahfidzJuz" IS NOT NULL AND NEW.tahfidz_juz IS NULL THEN NEW.tahfidz_juz := NEW."tahfidzJuz"; END IF;
 
@@ -197,8 +262,29 @@ BEGIN
     IF NEW.tahfidz_ayat_range IS NOT NULL AND NEW."tahfidzAyatRange" IS NULL THEN NEW."tahfidzAyatRange" := NEW.tahfidz_ayat_range;
     ELSIF NEW."tahfidzAyatRange" IS NOT NULL AND NEW.tahfidz_ayat_range IS NULL THEN NEW.tahfidz_ayat_range := NEW."tahfidzAyatRange"; END IF;
 
+    IF NEW.tahfidz_surah_from_number IS NOT NULL AND NEW."tahfidzSurahFromNumber" IS NULL THEN NEW."tahfidzSurahFromNumber" := NEW.tahfidz_surah_from_number;
+    ELSIF NEW."tahfidzSurahFromNumber" IS NOT NULL AND NEW.tahfidz_surah_from_number IS NULL THEN NEW.tahfidz_surah_from_number := NEW."tahfidzSurahFromNumber"; END IF;
+
+    IF NEW.tahfidz_surah_from_name IS NOT NULL AND NEW."tahfidzSurahFromName" IS NULL THEN NEW."tahfidzSurahFromName" := NEW.tahfidz_surah_from_name;
+    ELSIF NEW."tahfidzSurahFromName" IS NOT NULL AND NEW.tahfidz_surah_from_name IS NULL THEN NEW.tahfidz_surah_from_name := NEW."tahfidzSurahFromName"; END IF;
+
+    IF NEW.tahfidz_ayat_from IS NOT NULL AND NEW."tahfidzAyatFrom" IS NULL THEN NEW."tahfidzAyatFrom" := NEW.tahfidz_ayat_from;
+    ELSIF NEW."tahfidzAyatFrom" IS NOT NULL AND NEW.tahfidz_ayat_from IS NULL THEN NEW.tahfidz_ayat_from := NEW."tahfidzAyatFrom"; END IF;
+
+    IF NEW.tahfidz_surah_to_number IS NOT NULL AND NEW."tahfidzSurahToNumber" IS NULL THEN NEW."tahfidzSurahToNumber" := NEW.tahfidz_surah_to_number;
+    ELSIF NEW."tahfidzSurahToNumber" IS NOT NULL AND NEW.tahfidz_surah_to_number IS NULL THEN NEW.tahfidz_surah_to_number := NEW."tahfidzSurahToNumber"; END IF;
+
+    IF NEW.tahfidz_surah_to_name IS NOT NULL AND NEW."tahfidzSurahToName" IS NULL THEN NEW."tahfidzSurahToName" := NEW.tahfidz_surah_to_name;
+    ELSIF NEW."tahfidzSurahToName" IS NOT NULL AND NEW.tahfidz_surah_to_name IS NULL THEN NEW.tahfidz_surah_to_name := NEW."tahfidzSurahToName"; END IF;
+
+    IF NEW.tahfidz_ayat_to IS NOT NULL AND NEW."tahfidzAyatTo" IS NULL THEN NEW."tahfidzAyatTo" := NEW.tahfidz_ayat_to;
+    ELSIF NEW."tahfidzAyatTo" IS NOT NULL AND NEW.tahfidz_ayat_to IS NULL THEN NEW.tahfidz_ayat_to := NEW."tahfidzAyatTo"; END IF;
+
     IF NEW.created_at IS NOT NULL AND NEW."createdAt" IS NULL THEN NEW."createdAt" := NEW.created_at;
     ELSIF NEW."createdAt" IS NOT NULL AND NEW.created_at IS NULL THEN NEW.created_at := NEW."createdAt"; END IF;
+
+    IF NEW.updated_at IS NOT NULL AND NEW."updatedAt" IS NULL THEN NEW."updatedAt" := NEW.updated_at;
+    ELSIF NEW."updatedAt" IS NOT NULL AND NEW.updated_at IS NULL THEN NEW.updated_at := NEW."updatedAt"; END IF;
   END IF;
 
   RETURN NEW;
@@ -321,12 +407,15 @@ BEFORE INSERT OR UPDATE ON activity_logs
 FOR EACH ROW EXECUTE FUNCTION sync_log_columns();
 
 -- -------------------------------------------------------------------------
--- 3. INDEX OPTIMASI PENCARIAN
+-- 3. INDEX OPTIMASI PENCARIAN, FILTER & LEADERBOARD
 -- -------------------------------------------------------------------------
 CREATE INDEX IF NOT EXISTS idx_students_class ON students(class_id);
 CREATE INDEX IF NOT EXISTS idx_records_class_student ON memorization_records(class_id, student_name);
 CREATE INDEX IF NOT EXISTS idx_records_date ON memorization_records(date DESC);
 CREATE INDEX IF NOT EXISTS idx_records_teacher ON memorization_records(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_records_teacher_name ON memorization_records(teacher_name);
+CREATE INDEX IF NOT EXISTS idx_records_type ON memorization_records(type);
+CREATE INDEX IF NOT EXISTS idx_records_leaderboard ON memorization_records(class_id, type, tahfidz_activity);
 CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON activity_logs(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_auth_role ON auth_accounts(role);
 

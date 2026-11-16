@@ -69,7 +69,8 @@ export function dbToRecord(row: any): MemorizationRecord {
     tahfidzAyatTo: row.tahfidzAyatTo || row.tahfidz_ayat_to || undefined,
     grade: row.grade || 'Lanjut',
     notes: row.notes || '',
-    createdAt: row.createdAt || row.created_at || new Date().toISOString()
+    createdAt: row.createdAt || row.created_at || new Date().toISOString(),
+    updatedAt: row.updatedAt || row.updated_at || undefined
   };
 }
 
@@ -101,7 +102,8 @@ export function recordToDb(r: MemorizationRecord): Record<string, any> {
     tahfidz_ayat_to: r.tahfidzAyatTo || null,
     grade: r.grade,
     notes: r.notes || null,
-    created_at: r.createdAt || new Date().toISOString()
+    created_at: r.createdAt || new Date().toISOString(),
+    updated_at: r.updatedAt || null
   };
 }
 
